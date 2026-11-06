@@ -1,0 +1,15 @@
+{
+  "training": {
+    "naturalqa": {"repo": "google-research-datasets/natural_questions", "config": "default", "split": "train", "revision": "main"},
+    "2wikimqa": {"repo": "framolfese/2WikiMultihopQA", "config": "default", "split": "train", "revision": "main"},
+    "hotpotqa": {"repo": "hotpotqa/hotpot_qa", "config": "distractor", "split": "train", "revision": "main"},
+    "narrativeqa": {"repo": "deepmind/narrativeqa", "config": "default", "split": "train", "revision": "main"},
+    "multinews": {"repo": "tau/multi_news", "config": "default", "split": "train", "revision": "refs/convert/parquet", "converted_parquet": true}
+  },
+  "benchmark": {
+    "naturalqa": {"repo": "Twwilght/NQ", "config": "default", "split": "test", "revision": "main"},
+    "2wikimqa": {"repo": "Twwilght/MQA", "config": "default", "split": "test", "revision": "main"},
+    "hotpotqa": {"repo": "Twwilght/HQA", "config": "default", "split": "test", "revision": "main"},
+    "multinews": {"repo": "Twwilght/NEWS", "config": "default", "split": "test", "revision": "main"}
+  }
+}

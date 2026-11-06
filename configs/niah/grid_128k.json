@@ -1,0 +1,15 @@
+{
+  "corpus": "paulgraham",
+  "task": "uuid",
+  "lengths": [4096, 18204, 32312, 46421, 60529, 74638, 88746, 102855, 116963, 131072],
+  "depths": [0, 11, 22, 33, 44, 55, 66, 77, 88, 100],
+  "repeats": 10,
+  "seed": 20261107,
+  "min_ratio": 4,
+  "max_decoder_tokens": 40000,
+  "generation_budget": 64,
+  "max_corpus_tokens": 2000000,
+  "per_document_tokens": 262144,
+  "repeat_haystack": false,
+  "include_text": false
+}

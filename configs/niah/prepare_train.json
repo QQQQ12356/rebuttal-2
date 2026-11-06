@@ -1,0 +1,9 @@
+{
+  "seed": 42,
+  "strict_count": false,
+  "candidate_limit": 0,
+  "heldout_corpora": ["paulgraham"],
+  "limits": {"max_input_tokens": 16384, "max_answer_tokens": 1024, "max_decoder_tokens": 8192, "min_context_tokens": 32, "min_ratio": 4},
+  "synthetic": {"samples": 4000, "candidates": 8000, "corpus": "pg19_train", "lengths": [2048, 4096, 8192, 16384], "tasks": ["uuid", "passkey"], "max_corpus_tokens": 2000000, "per_document_tokens": 65536, "repeat_haystack": false},
+  "supervised": [{"source": "cogito_bits", "samples": 2000}, {"source": "cogito_bind", "samples": 2000}]
+}

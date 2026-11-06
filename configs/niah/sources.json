@@ -1,0 +1,7 @@
+{
+  "pg19_train": {"kind": "hf", "role": "haystack_train", "repo": "emozilla/pg19", "config": "default", "split": "train", "revision": "main", "limit": 64, "fields": ["text", "url", "short_book_title"]},
+  "pg19_test": {"kind": "hf", "role": "haystack_test", "repo": "emozilla/pg19", "config": "default", "split": "test", "revision": "main", "limit": 32, "fields": ["text", "url", "short_book_title"], "enabled": false},
+  "paulgraham": {"kind": "github", "role": "haystack_test", "repo": "gkamradt/needle-in-a-haystack", "revision": "main", "subdirectory": "needlehaystack/PaulGrahamEssays", "suffix": ".txt", "limit": 0},
+  "cogito_bits": {"kind": "hf", "role": "supervised_train", "repo": "ksopyla/cogito-probe-bits", "config": "default", "split": "train", "revision": "main", "limit": 0, "fields": ["id", "context", "query", "answer", "variant", "seq_len", "task", "split"]},
+  "cogito_bind": {"kind": "hf", "role": "supervised_train", "repo": "ksopyla/cogito-probe-bind", "config": "default", "split": "train", "revision": "main", "limit": 0, "fields": ["id", "context", "query", "answer", "variant", "seq_len", "task", "split"]}
+}
