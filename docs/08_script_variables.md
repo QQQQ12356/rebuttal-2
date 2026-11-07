@@ -29,6 +29,13 @@
 | 同上 | RAW_DIR | artifacts/raw |
 | 同上 | ROLE | all；可改 training 或 benchmark |
 | 同上 | TRAIN_LIMIT | 30000；每训练源原始前 N 行，0 全部 |
+| 同上 | DOWNLOAD_MODE | local；先下载分片到本地再解码，stream 为旧远端模式 |
+| 同上 | SOURCE_CACHE | artifacts/source_cache；保留完整文件和 .incomplete 以供续传 |
+| 同上 | DOWNLOAD_ATTEMPTS / RETRY_DELAY | 6 / 2；失败重试与初始退避，最大30秒 |
+| 同上 | METADATA_TIMEOUT | 60秒；dataset-info API 超时，独立于文件与ETag超时 |
+| 同上 | ROW_BATCH_SIZE / PROGRESS_EVERY | 16 / 100；本地 Arrow 批大小与输出进度间隔 |
+| 同上 | HF_HUB_DOWNLOAD_TIMEOUT / HF_HUB_ETAG_TIMEOUT | 120 / 60秒；用户环境中显式设置的值优先 |
+| 同上 | HF_HUB_DISABLE_XET / HF_HUB_ENABLE_HF_TRANSFER | 1 / 0；默认 HTTP 可续传路径，均可显式覆盖 |
 
 ## 3. 预处理 `20_prepare_data.sh`
 

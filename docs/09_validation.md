@@ -29,6 +29,7 @@ bash scripts/sh/90_validate.sh
 | 测试 | 目的 |
 | --- | --- |
 | test_data.py | Twwilght 干扰文档保留、两种 multi-hop context schema、NQ 多 span/yes-no、Narrative 全文、筛选预算、固定种子采样 |
+| test_downloads.py | split/config 分片选择、截断响应重试、403/磁盘错误快速失败、本地嵌套 Parquet 与 JSON、达到行数上限后不下载下一片；不访问外网 |
 | test_metrics.py | 归一化、别名、部分重叠、空文本、micro/macro、重复 shard ID 拒绝 |
 | test_model.py | 原始/分块压缩输出与梯度、短输入/纯 prompt、真实 EOS mask、变长前缀左 padding、双分支 LoRA 梯度、tiny Qwen 合并前后 greedy 结果 |
 | test_reporting.py | 数值/百分比、预测内容作为文本、长正文完整拆分再拼接 |

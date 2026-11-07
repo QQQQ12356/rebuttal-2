@@ -48,8 +48,16 @@ ROLE=training bash scripts/sh/10_download_data.sh --datasets narrativeqa
 | `--role` | all | all / training / benchmark |
 | `--datasets` | 当前 role 的全部源 | canonical 名称数组；all 模式下须在两个 role 中都存在 |
 | `--train-limit` | 30000 | 每个训练源读取前 N 条原始行；0 读取完整 split |
+| `--download-mode` | local | 先完整下载分片，再本地解码；stream 保留旧远端流式路径 |
+| `--source-cache` | artifacts/source_cache | 分片缓存根目录，保存完整文件及可续传的 .incomplete |
+| `--download-attempts` / `--retry-delay` | 6 / 2 | 每文件/元数据请求尝试次数、初始退避秒数，退避最大30秒 |
+| `--metadata-timeout` | 60 | dataset-info API 请求超时，单位秒；不依赖文件下载超时变量 |
+| `--row-batch-size` | 16 | 本地 Parquet 解码批大小，禁用 Arrow 后台读取线程 |
+| `--progress-every` | 100 | 每写入 N 条打印进度，首条与分片开始/完成也会打印 |
 
-流式读取减少本地 Arrow 缓存，但底层 Parquet 分片仍可能整片下载。Natural Questions 原始规模很大，NarrativeQA 全文也可能占用大量空间。`TRAIN_LIMIT` 是原始源前缀限制，**不是从完整数据集均匀采样**；后续预处理只在这批候选中做均匀 reservoir sampling。做最终实验时应明确报告候选池范围，或设 `TRAIN_LIMIT=0` 扫描完整训练 split。
+默认 local 模式按固定 commit 解析所选 config/split 的文件映射，逐片用 Hub SDK 下载完整文件；HTTP 中断会重试，并在服务端支持 Range 的情况下继续 .incomplete。随后仅从本地文件解码，达到 TRAIN_LIMIT 就停止，不下载剩余不需要的分片。它会增加分片缓存磁盘占用，但避免在 Arrow 解析期间反复请求远端字节。JSON/JSONL 也支持先落盘读取；JSON 数组会整体解析到内存，Parquet/JSONL 按小批/行读取。
+
+`DOWNLOAD_MODE=stream` 是原来的远端流式路径，网络不稳定时仍可能出现 ChunkedEncodingError。Natural Questions 原始规模很大，NarrativeQA 全文也可能占用大量空间。`TRAIN_LIMIT` 是原始源前缀限制，**不是从完整数据集均匀采样**；后续预处理只在这批候选中做均匀 reservoir sampling。做最终实验时应明确报告候选池范围，或设 `TRAIN_LIMIT=0` 扫描完整训练 split。
 
 下载每个源生成：
 
@@ -62,6 +70,8 @@ artifacts/raw/benchmark/naturalqa.source.json
 
 `.source.json` 记录 repo/config/split、解析后的 commit、行数与文件 SHA256。相同身份且哈希匹配会复用；身份变化或不完整文件会拒绝覆盖，请换 `RAW_DIR`。不要手动修改现有 raw 文件后继续使用原 manifest。
 
+新版另保存 transport 元数据，包括实际使用的分片文件、大小和 SHA256，保留原 identity 格式，已完成的旧版 raw 可继续复用。转换中断后可重跑同一命令：完整 JSONL 不会被半成品替换，临时 JSONL 会从头转换，已经落盘的源分片可复用；这不等于 JSONL 行级断点续写。源选择有歧义时不猜测，可在注册表该条增加 `"data_files":{"train":"default/train-*.parquet"}` 等明确映射。
+
 ## 4. 镜像与本地原始文件
 
 ```bash
@@ -71,3 +81,23 @@ HF_ENDPOINT=https://hf-mirror.com bash scripts/sh/10_download_data.sh
 若 MultiNews 转换分支在当前 endpoint 不可用，可以切回官方 endpoint；也可在 Linux 自行从合法来源准备 JSONL，然后放入 `RAW_DIR/training/multinews.jsonl`，每行包含 `document` 和 `summary`。其他源同理，文件名与 schema 必须符合注册名称。没有 `.source.json` 的本地输入会明确记为 `local_file` 加实际 SHA256，不伪造 Hub 来源。
 
 已有 SeCo 标准数据可直接使用 `input` / `prompt` / `answer` 格式放入对应 raw 文件；answer 可以是字符串或非空字符串数组。不要将测试样本放入 training 目录。自定义适配器只需修改 `seco/data.py::normalize_record`，保留统一输出协议。
+
+## 5. IncompleteRead / ChunkedEncodingError 修复
+
+该错误表示 HTTP 响应未接收完整；把 timeout 增加到1200秒不能修复已断开的连接。下载入口默认改用 local 模式，默认关闭 Xet/hf_transfer，使用有 .incomplete 文件的 HTTP 下载路径；可通过环境变量显式调整。此改动不涉及模型、数据 split、抽样范围或压缩方法。
+
+```bash
+# 更新代码后先做小样本验证，使用独立输出目录，避免与正式30000条身份冲突。
+PYTHON_BIN=/你的环境/bin/python HF_ENDPOINT=https://hf-mirror.com \
+HF_HUB_DOWNLOAD_TIMEOUT=120 ROLE=training TRAIN_LIMIT=20 \
+RAW_DIR=artifacts/raw_probe_local DOWNLOAD_MODE=local \
+bash scripts/sh/10_download_data.sh --datasets naturalqa
+
+# 验证成功后使用原始正式配额；共享分片缓存，无需重新下载已完成分片。
+PYTHON_BIN=/你的环境/bin/python HF_ENDPOINT=https://hf-mirror.com \
+HF_HUB_DOWNLOAD_TIMEOUT=120 DOWNLOAD_MODE=local bash scripts/sh/10_download_data.sh
+```
+
+不要清空 SOURCE_CACHE 或 .incomplete 来解决普通网络中断；保留它们才能尝试续传。默认下载串行处理分片，避免多连接放大镜像不稳定问题。401/403/404、磁盘满或路径权限错误不会反复重试，应先修复对应原因。镜像文件链路仍失败时，在新进程中换成可访问的官方 endpoint，缓存和 commit 不变时可复用文件；续传是否有效取决于服务端支持。
+
+如果改为本地读取后仍独立出现 PyGILState_Release 崩溃，保存完整首个异常，并在 Linux 执行 `python -m pip check`，记录 Python/pyarrow/datasets/huggingface_hub/requests/fsspec 版本，单独排查 native 库环境。当前堆栈只证明网络读取失败在先，不能确认解释器退出崩溃的具体库或根因。回归用例见 tests/test_downloads.py；当前 Windows 仅做静态检查，实际下载与 Linux 测试仍需目标环境验证。
