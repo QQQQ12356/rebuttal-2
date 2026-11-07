@@ -7,5 +7,5 @@ EXCEL_PATH="${EXCEL_PATH:-artifacts/reports/benchmark_$(timestamp)_${RANDOM}.xls
 INCLUDE_DETAILS="${INCLUDE_DETAILS:-1}"                    # 1 imports prediction/answer/prompt/context contents.
 extra=()
 [[ "$INCLUDE_DETAILS" == 1 ]] && extra+=(--include-details)
-"$PYTHON_BIN" scripts/py/70_export_excel.py \
+"$PYTHON_BIN" scripts/benchmark/py/70_export_excel.py \
     --inputs "${INPUTS[@]}" --output "$EXCEL_PATH" "${extra[@]}" "$@"

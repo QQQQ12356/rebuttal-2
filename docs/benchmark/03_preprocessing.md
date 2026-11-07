@@ -5,14 +5,14 @@
 ## 1. 使用方式
 
 ```bash
-bash scripts/sh/20_prepare_data.sh
+bash scripts/benchmark/sh/20_prepare_data.sh
 
 # 新数据版本：更严格的输入长度；不能覆盖已有 prepared 目录。
 PREPARED_DIR=artifacts/prepared/L8192_s42 MAX_INPUT_TOKENS=8192 \
-    bash scripts/sh/20_prepare_data.sh
+    bash scripts/benchmark/sh/20_prepare_data.sh
 
 # 仅选择两个训练源；测试仍处理全部四个 Twwilght 源。
-python scripts/py/20_prepare_data.py \
+python scripts/benchmark/py/20_prepare_data.py \
     --model artifacts/models/Qwen3-4B-Instruct-2507 \
     --output artifacts/prepared/two_sources \
     --datasets naturalqa hotpotqa --train-samples 2000 3000

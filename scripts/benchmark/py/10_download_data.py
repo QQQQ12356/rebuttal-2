@@ -11,7 +11,7 @@ from seco.io import project_path, read_json, sha256_file, write_json, write_json
 def main():
     require_linux()
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--registry", default="configs/datasets.json")
+    parser.add_argument("--registry", default="configs/benchmark/datasets.json")
     parser.add_argument("--output", default="artifacts/raw")
     parser.add_argument("--role", choices=("all", "training", "benchmark"), default="all")
     parser.add_argument("--datasets", nargs="+", help="Canonical names; omit for all in selected roles")

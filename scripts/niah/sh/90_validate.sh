@@ -3,7 +3,7 @@
 set -euo pipefail
 source "$(dirname -- "${BASH_SOURCE[0]}")/_common.sh"
 
-"$PYTHON_BIN" -m ruff check seco scripts/py scripts/niah/py tests
+"$PYTHON_BIN" -m ruff check seco scripts/benchmark/py scripts/niah/py tests
 "$PYTHON_BIN" scripts/niah/py/90_validate.py
 for entry in scripts/niah/sh/*.sh; do
     bash -n "$entry"

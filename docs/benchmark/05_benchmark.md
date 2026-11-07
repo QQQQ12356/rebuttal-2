@@ -3,7 +3,7 @@
 ## 1. 合并并持久保存
 
 ```bash
-CHECKPOINT=artifacts/runs/真实run/final bash scripts/sh/40_merge_lora.sh
+CHECKPOINT=artifacts/runs/真实run/final bash scripts/benchmark/sh/40_merge_lora.sh
 ```
 
 输出默认 `final_merged/`，内部有 HF 格式的 `encoder/`、`decoder/`、`tokenizer/`、`artifact.json` 和 `experiment.json`。使用 PEFT `merge_and_unload(safe_merge=True)`，不手写 LoRA 权重 key 或 alpha/r。合并输出完成后才发布正式目录，已有目录拒绝覆盖。默认 CPU 合并，需要容纳两套模型与合并临时张量的 RAM；可用 `MERGE_DEVICE=cuda` 切换。
@@ -13,21 +13,23 @@ CHECKPOINT=artifacts/runs/真实run/final bash scripts/sh/40_merge_lora.sh
 ## 2. 运行四数据集 benchmark
 
 ```bash
-CHECKPOINT=artifacts/runs/真实run/final_merged bash scripts/sh/50_benchmark.sh
+CHECKPOINT=artifacts/runs/真实run/final_merged bash scripts/benchmark/sh/50_benchmark.sh
 
 # 四卡数据并行，每卡一份完整 encoder/decoder。
 CHECKPOINT=artifacts/runs/真实run/final_merged \
 CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 \
-INCLUDE_CONTEXT=1 bash scripts/sh/50_benchmark.sh
+INCLUDE_CONTEXT=1 bash scripts/benchmark/sh/50_benchmark.sh
 
 # 只测试 NaturalQA、HotpotQA 和两种比例。
-python -m torch.distributed.run --standalone --nproc_per_node 1 scripts/py/50_benchmark.py \
+python -m torch.distributed.run --standalone --nproc_per_node 1 scripts/benchmark/py/50_benchmark.py \
     --checkpoint artifacts/runs/真实run/final_merged \
     --output artifacts/benchmarks/custom_test \
     --datasets naturalqa hotpotqa --ratios 8 16
 ```
 
 程序每进程只加载一次模型，然后顺序测试所有比例。先固定数据选择，rank 使用不重叠步长分片，不用补齐式 DistributedSampler；每个 rank 内按数据集/长度排序减少 padding；主进程检查 ID 集合与数量，再恢复原始选样顺序。空分片也会写空分片文件并参与同步。每个比例使用同一份样本，预热重复首 batch，不消耗或漏评测试样本。
+
+启动脚本会打印日志路径，可用 `tail -f` 跟踪。进度按 GPU rank、压缩比和数据集显示已完成样本数、百分比和耗时。首批与末批结束时立即记录，中间批次在距上次输出至少 10 秒时更新。
 
 推理多卡是提高吞吐的数据并行，**每张卡仍要放下一套完整双模型**，不提供 tensor parallel 或 ZeRO inference。训练能靠 ZeRO-3 放下，不意味着单卡推理也能放下。遇到 OOM 应缩短输入/降低 batch，或选用更大显存 GPU；不要将训练卡数当作推理模型分片数。
 
@@ -78,7 +80,7 @@ MultiNews 也按要求只报告 EM/F1；这是与 QA 一致的文本匹配指标
 
 ```bash
 PREDICTIONS=artifacts/benchmarks/真实benchmark/ratio_16/predictions.jsonl \
-bash scripts/sh/60_score.sh
+bash scripts/benchmark/sh/60_score.sh
 ```
 
 默认重新生成同目录 `metrics.json` 并保留已有 ratio、计时与模型附注。`--output` 可指定新指标路径，`--scored-output` 可另存带重算分数的新 JSONL。新格式需要 `id/dataset/prediction/answer`；也兼容旧 SeCo 的 `subset/model_output/ground_truth`，缺 ID 时按行号生成。拒绝重复 ID 和空文件，不将缺失输出算成成功样本。
@@ -89,10 +91,10 @@ bash scripts/sh/60_score.sh
 
 ```bash
 # 必须改成原 checkpoint 的真实基座，不能拿默认 Qwen 加载原 Llama 权重。
-python scripts/py/41_import_checkpoint.py \
-    --source /旧实验/model.safetensors --config configs/原模型配置.json \
+python scripts/benchmark/py/41_import_checkpoint.py \
+    --source /旧实验/model.safetensors --config configs/benchmark/原模型配置.json \
     --model /旧实验对应的原始基座 --output artifacts/imported/original_seco
-CHECKPOINT=artifacts/imported/original_seco bash scripts/sh/40_merge_lora.sh
+CHECKPOINT=artifacts/imported/original_seco bash scripts/benchmark/sh/40_merge_lora.sh
 ```
 
 导入检查全部 LoRA key、形状以及文件中存在的 frozen base 权重。基座内容不一致时拒绝丢弃自定义基座。只支持原始**未合并**双 LoRA safetensors；旧版手工合并文件不冒充新格式。导入用于推理，不恢复旧优化器、scheduler 或训练步数。旧训练没有可验证的数据来源时不补造来源元数据。

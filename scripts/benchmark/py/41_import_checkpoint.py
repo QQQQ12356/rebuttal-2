@@ -10,7 +10,7 @@ def main():
     require_linux()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", required=True, help="Original unmerged dual-LoRA model.safetensors")
-    parser.add_argument("--config", default="configs/train.json", help="Must match original model and LoRA settings")
+    parser.add_argument("--config", default="configs/benchmark/train.json", help="Must match original model and LoRA settings")
     parser.add_argument("--model", help="Original base model path; do not use the default Qwen for Llama checkpoints")
     parser.add_argument("--output", required=True, help="New adapter directory; inference only, no optimizer restore")
     args = parser.parse_args()

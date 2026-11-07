@@ -3,10 +3,10 @@
 Excel 导出在 Linux 执行，不需要桌面 Excel，也不加载模型。安装 `requirements-tools.txt` 后运行：
 
 ```bash
-bash scripts/sh/70_export_excel.sh
-EXCEL_PATH=artifacts/reports/paper_table.xlsx bash scripts/sh/70_export_excel.sh
+bash scripts/benchmark/sh/70_export_excel.sh
+EXCEL_PATH=artifacts/reports/paper_table.xlsx bash scripts/benchmark/sh/70_export_excel.sh
 
-python scripts/py/70_export_excel.py \
+python scripts/benchmark/py/70_export_excel.py \
     --inputs 'artifacts/benchmarks/**/metrics.json' \
     --output artifacts/reports/all_runs.xlsx --include-details
 ```

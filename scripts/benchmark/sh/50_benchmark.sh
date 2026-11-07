@@ -24,7 +24,7 @@ mkdir -p logs
 LOG_FILE="logs/benchmark_$(timestamp)_${RANDOM}.log"
 printf 'Log: %s\n' "$LOG_FILE"
 "$PYTHON_BIN" -m torch.distributed.run --standalone --nproc_per_node "$NPROC_PER_NODE" \
-    scripts/py/50_benchmark.py --checkpoint "$CHECKPOINT" --prepared-dir "$PREPARED_DIR" \
+    scripts/benchmark/py/50_benchmark.py --checkpoint "$CHECKPOINT" --prepared-dir "$PREPARED_DIR" \
     --output "$OUTPUT_DIR" --datasets "${DATASETS[@]}" --ratios "${RATIOS[@]}" \
     --batch-size "$BATCH_SIZE" --samples "$SAMPLES" --workers "$WORKERS" \
     --warmup-batches "$WARMUP_BATCHES" --qa-max-new-tokens "$QA_MAX_NEW_TOKENS" \

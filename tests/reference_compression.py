@@ -1,4 +1,4 @@
-"""Original SeCo compression, copied verbatim; see docs/07_architecture.md."""
+"""Original SeCo compression, copied verbatim; see docs/benchmark/07_architecture.md."""
 import math
 import torch
 import torch.nn.functional as F

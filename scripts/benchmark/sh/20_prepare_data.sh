@@ -19,7 +19,7 @@ SEED="${SEED:-42}"
 STRICT_COUNT="${STRICT_COUNT:-0}"                        # 1 fails when eligible examples are insufficient.
 extra=()
 [[ "$STRICT_COUNT" == 1 ]] && extra+=(--strict-count)
-"$PYTHON_BIN" scripts/py/20_prepare_data.py \
+"$PYTHON_BIN" scripts/benchmark/py/20_prepare_data.py \
     --model "$MODEL_PATH" --raw-dir "$RAW_DIR" --output "$PREPARED_DIR" \
     --datasets "${DATASETS[@]}" --train-samples "${TRAIN_SAMPLES[@]}" --test-samples "$TEST_SAMPLES" \
     --candidate-limit "$CANDIDATE_LIMIT" --max-input-tokens "$MAX_INPUT_TOKENS" \

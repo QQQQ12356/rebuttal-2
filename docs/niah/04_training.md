@@ -80,4 +80,4 @@ RESUME=artifacts/niah/runs/真实run/checkpoint-500 MAX_STEPS=2000 \
 
 训练归档还保存 NIAH 背景文档与已选答案的哈希；NIAH benchmark 会再与当前 checkpoint 核对背景/答案重复。不同训练实验应共用同一份固定 held-out grid，不能因为某次结果低而换测试 seed。
 
-合并使用独立 `scripts/niah/sh/40_merge_lora.sh`，底层复用统一 PEFT 合并实现。默认 CPU 合并、输出 `${CHECKPOINT}_merged`；已有目录拒绝覆盖。完整多节点设置及 native checkpoint 的限制与 [原训练指南](../04_training.md) 一致。
+合并使用独立 `scripts/niah/sh/40_merge_lora.sh`，底层复用统一 PEFT 合并实现。默认 CPU 合并、输出 `${CHECKPOINT}_merged`；已有目录拒绝覆盖。完整多节点设置及 native checkpoint 的限制与 [Benchmark 训练指南](../benchmark/04_training.md) 一致。

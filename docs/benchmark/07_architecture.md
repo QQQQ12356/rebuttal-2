@@ -51,8 +51,8 @@
 | seco/reporting.py | 结果协议校验、Excel 汇总与长文本导出 |
 | seco/downloads.py | 固定 split/config 分片选择、网络重试、源分片缓存与本地记录读取；不参与模型压缩 |
 | seco/io.py / config.py | 原子文本写入、哈希、路径与配置约束 |
-| scripts/py | 命令行流程编排；不复制核心算法 |
-| scripts/sh | Linux 环境变量、可编辑启动设置和日志 |
+| scripts/benchmark/py | 命令行流程编排；不复制核心算法 |
+| scripts/benchmark/sh | Linux 环境变量、可编辑启动设置和日志 |
 
 ## 4. 本次采用的编码 skill
 

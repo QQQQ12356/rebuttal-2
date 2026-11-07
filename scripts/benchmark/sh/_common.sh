@@ -2,7 +2,7 @@
 # Shared path/environment setup. Source this file; edit settings in numbered entries.
 set -euo pipefail
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-PROJECT_ROOT=$(cd -- "$SCRIPT_DIR/../.." && pwd)
+PROJECT_ROOT=$(cd -- "$SCRIPT_DIR/../../.." && pwd)
 [[ $(uname -s) == Linux ]] || { echo 'Run experiments on Linux; Windows is for editing only.' >&2; exit 2; }
 cd -- "$PROJECT_ROOT"
 PYTHON_BIN="${PYTHON_BIN:-python}"

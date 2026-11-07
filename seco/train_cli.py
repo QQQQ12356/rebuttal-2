@@ -11,7 +11,7 @@ from seco.data import Collator, tokenizer_fingerprint
 from seco.io import fingerprint, model_source, project_path, read_json, sha256_file, write_json
 
 
-def main(default_config="configs/train.json", expected_task="qa"):
+def main(default_config="configs/benchmark/train.json", expected_task="qa"):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default=default_config)
     parser.add_argument("--output", required=True, help="Unique run directory; shell creates the name")

@@ -3,30 +3,30 @@
 ## 1. 先确认计划
 
 ```bash
-PLAN_ONLY=1 bash scripts/sh/30_train.sh
+PLAN_ONLY=1 bash scripts/benchmark/sh/30_train.sh
 ```
 
 计划检查配置、prepared manifest、训练 JSONL 哈希、压缩比预算和输出路径，然后打印配置与有效 batch。不加载模型、不分配 CUDA、不创建训练目录。实际 tokenizer 一致性和模型位置上限在训练初始化后再检查。
 
-配置优先级为：Python 命令行覆盖项 > Shell 显式传入项 > `configs/train.json`。脚本默认向 Python 传入本地 `MODEL_PATH` 和 `PREPARED_DIR`，所以只修改 JSON 中的模型/数据路径还不够；也应改 Shell 变量，或直接运行 Python。
+配置优先级为：Python 命令行覆盖项 > Shell 显式传入项 > `configs/benchmark/train.json`。脚本默认向 Python 传入本地 `MODEL_PATH` 和 `PREPARED_DIR`，所以只修改 JSON 中的模型/数据路径还不够；也应改 Shell 变量，或直接运行 Python。
 
 ## 2. 启动方式
 
 ```bash
 # 默认四卡 ZeRO-2。
-bash scripts/sh/30_train.sh
+bash scripts/benchmark/sh/30_train.sh
 
 # 单卡，不启用 DeepSpeed。
-CUDA_VISIBLE_DEVICES=0 NPROC_PER_NODE=1 BACKEND=ddp bash scripts/sh/30_train.sh
+CUDA_VISIBLE_DEVICES=0 NPROC_PER_NODE=1 BACKEND=ddp bash scripts/benchmark/sh/30_train.sh
 
 # 两卡普通 DDP。
-CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2 BACKEND=ddp bash scripts/sh/30_train.sh
+CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2 BACKEND=ddp bash scripts/benchmark/sh/30_train.sh
 
 # 四卡，优化器状态 CPU 卸载。
-CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero2_cpu bash scripts/sh/30_train.sh
+CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero2_cpu bash scripts/benchmark/sh/30_train.sh
 
 # 参数、优化器状态 CPU 卸载。
-CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero3_cpu bash scripts/sh/30_train.sh
+CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero3_cpu bash scripts/benchmark/sh/30_train.sh
 ```
 
 | backend | 配置文件 | GPU 上保留内容 | 适用提示 |
@@ -42,7 +42,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero3_cpu bash scripts/sh/
 
 ## 3. 固定与随机压缩比
 
-编辑 `configs/train.json`：
+编辑 `configs/benchmark/train.json`：
 
 ```json
 {
@@ -122,11 +122,11 @@ artifacts/runs/<RUN_NAME_UTC时间_随机后缀>/
 ```bash
 RESUME=artifacts/runs/真实run/checkpoint-500 \
 CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero2 \
-bash scripts/sh/30_train.sh
+bash scripts/benchmark/sh/30_train.sh
 
 # 延长累计目标；新目标必须大于断点 global_step。
 RESUME=artifacts/runs/真实run/checkpoint-500 MAX_STEPS=2000 \
-bash scripts/sh/30_train.sh
+bash scripts/benchmark/sh/30_train.sh
 ```
 
 Shell 自动以 checkpoint 的父目录作为 RUN_DIR；也可显式指定，但必须一致。恢复检查模型/数据配置、manifest 哈希、backend、world size，只有累计 max_steps 可变。使用远程 main 的恢复会继续使用断点中保存的 commit。改变模型、LoRA、压缩比数组、候选池或显卡进程数时开新实验。`final/` 和旧版导入目录没有 native optimizer 状态，不能用于 `RESUME`。

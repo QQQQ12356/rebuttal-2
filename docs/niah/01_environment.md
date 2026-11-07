@@ -28,7 +28,7 @@ bash scripts/niah/sh/00_setup_environment.sh
 | TORCH_INDEX | CUDA 12.6 torch wheel 源 | 与 Linux 驱动/toolkit 一起核对 |
 | INSTALL_DEEPSPEED | 1 | 0 仅安装普通 DDP 依赖 |
 
-没有 conda 时使用 Python venv。CUDA/DeepSpeed CPUAdam 的安装提示见 [原环境指南](../01_environment.md)。新增环境约束尚未在目标 Linux GPU 上联合安装实测，先做 [08 验证](08_validation.md)。
+没有 conda 时使用 Python venv。CUDA/DeepSpeed CPUAdam 的安装提示见 [Benchmark 环境指南](../benchmark/01_environment.md)。新增环境约束尚未在目标 Linux GPU 上联合安装实测，先做 [08 验证](08_validation.md)。
 
 热力图采用 Matplotlib Agg 后端，可在无桌面、无显示器的服务器执行，默认英文字体与标签避免 CJK 字体缺失。没有 OpenAI API key 或其他在线 LLM 评委依赖。
 

@@ -8,10 +8,10 @@
 
 | 检查 | 结果/范围 |
 | --- | --- |
-| Python AST 解析 | 新 seco、scripts/py、tests 目录全部 Python 文件可解析 |
+| Python AST 解析 | 新 seco、scripts/benchmark/py、tests 目录全部 Python 文件可解析 |
 | 原始方法对照 | 两个压缩方法与 legacy 原文件 AST 相同 |
 | JSON 解析 | configs 下所有配置可解析 |
-| Shell 语法 | 使用 Git Bash 对新 scripts/sh 全部 `.sh` 执行 bash -n 通过；没有执行脚本正文 |
+| Shell 语法 | 使用 Git Bash 对新 scripts/benchmark/sh 全部 `.sh` 执行 bash -n 通过；没有执行脚本正文 |
 | LF 检查 | 新 Shell 文件未含 CRLF |
 | Ruff | 当前 Windows 运行时未安装 Ruff；完整 Ruff 检查留待 Linux 安装工具依赖后执行 |
 
@@ -21,7 +21,7 @@
 
 ```bash
 python -m pip install -r requirements.txt -r requirements-tools.txt
-bash scripts/sh/90_validate.sh
+bash scripts/benchmark/sh/90_validate.sh
 ```
 
 入口依次执行 Ruff、项目静态检查、Shell 语法以及 `CUDA_VISIBLE_DEVICES='' python -m unittest discover -s tests -v`。测试只使用随机小张量、随机初始化的 tiny Qwen3 与临时小文件；不下载 pretrained 模型，不需要 GPU。
@@ -39,7 +39,7 @@ bash scripts/sh/90_validate.sh
 只验证本次下载修复，可在 Linux 项目根运行以下命令；用例使用临时 Parquet/JSON 和外部 Hub/HTTP 接口替身，不请求真实数据源，也不加载模型：
 
 ```bash
-python -m unittest discover -s tests -p 'test_downloads.py' -v
+python -m unittest discover -s tests/benchmark -p 'test_downloads.py' -v
 ```
 
 该用例不能证明镜像当前可达或真实断点续传成功。网络验证另按 [02 下载指南第5节](02_download.md#5-incompleteread--chunkedencodingerror-修复) 执行20条样本探针，保留实际日志和 manifest。
@@ -48,8 +48,8 @@ python -m unittest discover -s tests -p 'test_downloads.py' -v
 
 1. 使用新的 RAW_DIR 下载小候选池，四个 benchmark 保持原测试身份。
 2. 用新的 PREPARED_DIR，将每源训练/测试样本降为 8–32，输入长度先设 2048，解码预算满足实际样本。
-3. 复制 `configs/train.json` 为 `configs/smoke.json`；将 max_steps=2、save_steps=1、logging_steps=1。保留目标 LoRA 设置与真实双模型。
-4. 先单卡 `BACKEND=ddp NPROC_PER_NODE=1 CUDA_VISIBLE_DEVICES=0 CONFIG=configs/smoke.json ...` 运行两步，确认 loss 有限、checkpoint-1/2 和 final 完整。
+3. 复制 `configs/benchmark/train.json` 为 `configs/benchmark/smoke.json`；将 max_steps=2、save_steps=1、logging_steps=1。保留目标 LoRA 设置与真实双模型。
+4. 先单卡 `BACKEND=ddp NPROC_PER_NODE=1 CUDA_VISIBLE_DEVICES=0 CONFIG=configs/benchmark/smoke.json ...` 运行两步，确认 loss 有限、checkpoint-1/2 和 final 完整。
 5. 在 checkpoint-1 上用同配置恢复到第 2 步，使用原 RUN_DIR；确认 Trainer 状态、global_step 和随机比例 RNG 正常恢复。
 6. 在独立新 run 上分别执行两卡 DDP、zero2、zero2_cpu、zero3_cpu；每种检查保存与恢复，不混用 backend。
 7. 用少量样本比较 adapter `--no-merge` 与 merged 推理，固定 attention/dtype/比例/解码参数。比较单卡和多卡的 ID 数量与 EM/F1，确认没有漏/重样本。
@@ -82,4 +82,4 @@ CPU 等价性测试不能代替 ZeRO 的真实集成验证。需要报告实验�
 | 指标整体为零 | 先检查 prediction 与 answer、模型权重身份、生成长度、输入 prompt；不要先修改 metric 归一化掩盖问题 |
 | Excel 没有正文 | benchmark 默认不保存 input；启用 INCLUDE_CONTEXT=1 重新生成预测，已有文件不能凭空还原 |
 
-如需单独静态检查可用 `python scripts/py/90_validate.py`；它不加载项目 ML 模块，也不训练。完整实验命令的参数列表可用对应 Python 文件 `--help` 查看。
+如需单独静态检查可用 `python scripts/benchmark/py/90_validate.py`；它不加载项目 ML 模块，也不训练。完整实验命令的参数列表可用对应 Python 文件 `--help` 查看。

@@ -25,7 +25,7 @@
 | 01_download_model.sh | MODEL_ID | Qwen/Qwen3-4B-Instruct-2507 |
 | 同上 | REVISION | main；最终复现建议 commit |
 | 同上 | MODEL_PATH | artifacts/models/Qwen3-4B-Instruct-2507 |
-| 10_download_data.sh | REGISTRY | configs/datasets.json；修改各源 repo/config/split/revision |
+| 10_download_data.sh | REGISTRY | configs/benchmark/datasets.json；修改各源 repo/config/split/revision |
 | 同上 | RAW_DIR | artifacts/raw |
 | 同上 | ROLE | all；可改 training 或 benchmark |
 | 同上 | TRAIN_LIMIT | 30000；每训练源原始前 N 行，0 全部 |
@@ -68,7 +68,7 @@
 | NNODES / NODE_RANK | 1 / 0 | 节点总数 / 当前节点编号 |
 | MASTER_ADDR / MASTER_PORT | 127.0.0.1 / 29500 | rendezvous 地址/端口，多节点需可访问主节点 |
 | BACKEND | zero2 | ddp / zero2 / zero2_cpu / zero3_cpu |
-| CONFIG | configs/train.json | LoRA、dtype、attention、压缩比数组、优化器等 |
+| CONFIG | configs/benchmark/train.json | LoRA、dtype、attention、压缩比数组、优化器等 |
 | MODEL_PATH | 默认本地模型目录 | 覆盖 JSON 基座路径 |
 | PREPARED_DIR | artifacts/prepared/default | 覆盖 JSON 数据路径 |
 | RUN_NAME | qwen3_4b_seco | 新实验目录的人类标签，实际还追加 UTC 时间和随机后缀 |
@@ -85,7 +85,7 @@
 | 同上 | MERGED_DIR | CHECKPOINT 后接 _merged；必须尚不存在 |
 | 同上 | MERGE_DEVICE | cpu；也可 cuda，注意双模型显存 |
 | 41_import_checkpoint.sh | SOURCE | 必改为旧未合并双 LoRA safetensors 文件 |
-| 同上 | CONFIG | configs/train.json；旧模型必须另配对应基座与 r/alpha/dropout |
+| 同上 | CONFIG | configs/benchmark/train.json；旧模型必须另配对应基座与 r/alpha/dropout |
 | 同上 | OUTPUT_DIR | artifacts/imported/original_seco，新格式输出目录 |
 
 基座文件迁移时 Python 提供 `--model /新基座路径`；必须保持相同权重。迁移工具不猜测旧 checkpoint 的 LoRA alpha 或来源数据。
