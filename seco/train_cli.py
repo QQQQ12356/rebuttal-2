@@ -37,6 +37,8 @@ def main(default_config="configs/benchmark/train.json", expected_task="qa"):
         raise ValueError(f"Expected {expected_task} training data; got {manifest.get('task', 'qa')}")
     if manifest["format"] != "seco-data-v1":
         raise ValueError("Unsupported prepared data format")
+    if expected_task == "ruler_qa" and (manifest.get("kind") != "train" or not manifest.get("question_keys")):
+        raise ValueError("Expected RULER QA training data with question identities")
     if sha256_file(prepared / "train.jsonl") != manifest["files"]["train.jsonl"]:
         raise ValueError("Training data hash mismatch")
     ratios = config["model"]["random_ratios"] if config["model"]["ratio_mode"] == "random" else [config["model"]["compress_ratio"]]
@@ -113,6 +115,8 @@ def main(default_config="configs/benchmark/train.json", expected_task="qa"):
         experiment["niah_training_identity"] = {
             "document_hashes": [row["text_sha256"] for row in pool.get("documents", [])],
             "answer_hashes": manifest.get("answer_hashes", [])}
+    if expected_task == "ruler_qa":
+        experiment["ruler_qa_training_question_keys"] = manifest["question_keys"]
     trainer = SeCoTrainer(model=model, args=training_args, train_dataset=dataset,
                           data_collator=Collator(tokenizer.pad_token_id), experiment=experiment)
     if trainer.is_world_process_zero():

@@ -1,0 +1,13 @@
+{
+  "train_lengths": [4096, 8192],
+  "test_lengths": [4096, 8192, 16384, 32768],
+  "train_candidates_per_task": 4096,
+  "train_samples_per_task": 512,
+  "test_samples_per_task": 50,
+  "min_fill": 0.85,
+  "min_ratio": 4,
+  "max_decoder_tokens": 16384,
+  "max_answer_tokens": 64,
+  "generation_budget": 32,
+  "seed": 42
+}
