@@ -22,6 +22,7 @@ extra=()
 [[ "$INCLUDE_CONTEXT" == 1 ]] && extra+=(--include-context)
 mkdir -p logs
 LOG_FILE="logs/benchmark_$(timestamp)_${RANDOM}.log"
+printf 'Log: %s\n' "$LOG_FILE"
 "$PYTHON_BIN" -m torch.distributed.run --standalone --nproc_per_node "$NPROC_PER_NODE" \
     scripts/py/50_benchmark.py --checkpoint "$CHECKPOINT" --prepared-dir "$PREPARED_DIR" \
     --output "$OUTPUT_DIR" --datasets "${DATASETS[@]}" --ratios "${RATIOS[@]}" \

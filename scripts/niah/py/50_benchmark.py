@@ -7,8 +7,9 @@ import time
 
 from niah_bootstrap import require_linux
 from seco.data import Collator, tokenizer_fingerprint
-from seco.io import fingerprint, iter_jsonl, project_path, read_json, sha256_file, write_json
+from seco.io import fingerprint, iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.niah.metrics import aggregate, score_prediction
+from seco.progress import BatchProgress, log_progress
 
 
 def main():
@@ -66,6 +67,7 @@ def main():
     if not torch.cuda.is_available():
         raise RuntimeError("NIAH generation requires a visible Linux CUDA GPU")
     rank, world = int(os.getenv("RANK", "0")), int(os.getenv("WORLD_SIZE", "1"))
+    worker_label = f"[niah rank={rank}]"
     local_rank = int(os.getenv("LOCAL_RANK", "0"))
     torch.cuda.set_device(local_rank)
     device = torch.device("cuda", local_rank)
@@ -76,12 +78,14 @@ def main():
     if world > 1:
         dist.barrier()
     set_seed(manifest["grid"]["seed"] + rank)
+    log_progress(f"{worker_label} loading checkpoint {source}")
     model, experiment = load_checkpoint_model(source, model_path=args.model, attention=args.attention)
     if tokenizer_fingerprint(model.tokenizer) != manifest["tokenizer_fingerprint"]:
         raise ValueError("NIAH grid tokenizer differs from checkpoint tokenizer")
     model.to(device).eval()
     if not args.no_merge:
         model.merge_for_inference()
+    log_progress(f"{worker_label} validating test grid")
     rows = list(iter_jsonl(prepared / "grid.jsonl"))
     if len(rows) != manifest["count"] or len({row["id"] for row in rows}) != len(rows):
         raise ValueError("Grid count or sample identity mismatch")
@@ -106,7 +110,9 @@ def main():
     generation = {"max_new_tokens": args.max_new_tokens, "do_sample": False,
                   "repetition_penalty": args.repetition_penalty,
                   "return_dict_in_generate": False, "output_scores": False}
-    for ratio in args.ratios:
+    for ratio_index, ratio in enumerate(args.ratios, start=1):
+        label = f"{worker_label} R={ratio:g} ({ratio_index}/{len(args.ratios)})"
+        progress = BatchProgress(f"{label} grid", len(shard))
         directory = output / f"ratio_{ratio:g}"
         directory.mkdir(parents=True, exist_ok=True)
         loader = DataLoader(shard, batch_size=args.batch_size, shuffle=False, collate_fn=collator,
@@ -137,11 +143,13 @@ def main():
                     handle.write(json.dumps(result, ensure_ascii=False) + "\n")
                 handle.flush()
                 offset += len(predictions)
+                progress.advance(len(predictions))
         write_json(directory / f"runtime.rank{rank}.json", {"peak_allocated_gib": torch.cuda.max_memory_allocated(device) / 2**30})
         if world > 1:
+            log_progress(f"{label}: shard saved, waiting for all ranks")
             dist.barrier()
         if rank == 0:
-            from seco.io import write_jsonl
+            log_progress(f"{label}: aggregating {len(rows)} samples")
             combined = [row for worker in range(world) for row in iter_jsonl(directory / f"predictions.rank{worker}.jsonl")]
             if {row["id"] for row in combined} != {row["id"] for row in rows}:
                 raise ValueError("NIAH shard IDs differ from fixed grid IDs")
@@ -154,7 +162,8 @@ def main():
                             "mean_seconds_per_sample": sum(row["seconds_per_sample"] for row in combined) / len(combined),
                             "peak_allocated_gib": max(read_json(directory / f"runtime.rank{worker}.json")["peak_allocated_gib"] for worker in range(world))})
             write_json(directory / "metrics.json", metrics)
-            print(f"NIAH R={ratio:g}: accuracy={metrics['summary']['accuracy']:.4f}, F1={metrics['summary']['f1']:.4f}, n={metrics['count']}")
+            log_progress(f"{label}: n={metrics['count']}, accuracy={metrics['summary']['accuracy']:.4f}, "
+                         f"F1={metrics['summary']['f1']:.4f}")
         if world > 1:
             dist.barrier()
     if world > 1:

@@ -24,6 +24,7 @@ if [[ "$PLAN_ONLY" == 1 ]]; then
 fi
 mkdir -p "$NIAH_ROOT/logs"
 LOG_FILE="$NIAH_ROOT/logs/benchmark_$(timestamp)_${RANDOM}.log"
+printf 'Log: %s\n' "$LOG_FILE"
 "$PYTHON_BIN" -m torch.distributed.run --standalone --nproc_per_node "$NPROC_PER_NODE" \
     scripts/niah/py/50_benchmark.py "${options[@]}" "$@" 2>&1 | tee "$LOG_FILE"
 printf 'NIAH benchmark: %s\nLog: %s\n' "$OUTPUT_DIR" "$LOG_FILE"

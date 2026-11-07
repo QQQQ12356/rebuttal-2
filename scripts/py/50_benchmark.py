@@ -1,5 +1,6 @@
 """Batched deterministic generation with disjoint GPU shards and EM/F1 results."""
 import argparse
+import math
 import os
 import random
 import time
@@ -8,6 +9,7 @@ from _bootstrap import require_linux
 from seco.data import BENCHMARKS, Collator, tokenizer_fingerprint
 from seco.io import iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.metrics import score_answer, summarize
+from seco.progress import BatchProgress, log_progress
 
 
 def main():
@@ -32,7 +34,6 @@ def main():
     parser.add_argument("--no-merge", action="store_true", help="Keep LoRA modules active for equivalence comparisons")
     parser.add_argument("--include-context", action="store_true", help="Include source context in prediction JSONL/Excel details")
     args = parser.parse_args()
-    import math
     if not args.ratios or any(not math.isfinite(r) or r < 1 for r in args.ratios):
         parser.error("Ratios must be finite and >= 1")
     if args.batch_size < 1 or min(args.samples, args.workers, args.warmup_batches) < 0:
@@ -50,6 +51,7 @@ def main():
     if not torch.cuda.is_available():
         raise RuntimeError("This benchmark entry requires a Linux CUDA GPU")
     rank, world = int(os.getenv("RANK", "0")), int(os.getenv("WORLD_SIZE", "1"))
+    worker_label = f"[benchmark rank={rank}]"
     local_rank = int(os.getenv("LOCAL_RANK", "0"))
     torch.cuda.set_device(local_rank)
     device = torch.device("cuda", local_rank)
@@ -68,12 +70,14 @@ def main():
                            for name in args.datasets)
     if requested_budget > manifest["arguments"]["test_generation_budget"]:
         raise ValueError("Generation exceeds preprocessing test generation budget; preprocess again")
+    log_progress(f"{worker_label} loading checkpoint {source}")
     model, experiment = load_checkpoint_model(source, model_path=args.model, attention=args.attention)
     if tokenizer_fingerprint(model.tokenizer) != manifest["tokenizer_fingerprint"]:
         raise ValueError("Evaluation tokenizer differs from preprocessing")
     model.to(device).eval()
     if not args.no_merge:
         model.merge_for_inference()
+    log_progress(f"{worker_label} selecting test samples")
     selected = []
     for index, name in enumerate(args.datasets):
         relative = f"test/{name}.jsonl"
@@ -100,7 +104,9 @@ def main():
     # Bucket by dataset and then length; restore canonical selection order on rank 0.
     order = {row["id"]: index for index, row in enumerate(selected)}
     shard = selected[rank::world]
-    for ratio in args.ratios:
+    for ratio_index, ratio in enumerate(args.ratios, start=1):
+        label = f"{worker_label} R={ratio:g} ({ratio_index}/{len(args.ratios)})"
+        log_progress(f"{label}: starting ratio, local samples={len(shard)}")
         directory = output / f"ratio_{ratio:g}"
         directory.mkdir(parents=True, exist_ok=True)
         predictions = []
@@ -114,6 +120,7 @@ def main():
                 centers = min(row["context_tokens"], max(2, math.ceil(row["context_tokens"] / ratio)))
                 if len(row["input_ids"]) > model.config.max_position_embeddings or centers + row["prompt_tokens"] + max_new > model.config.max_position_embeddings:
                     raise ValueError(f"Sample exceeds model position limit: {row['id']}")
+            progress = BatchProgress(f"{label} dataset={name}", len(rows))
             loader = DataLoader(rows, batch_size=args.batch_size, collate_fn=collator,
                                 num_workers=args.workers, pin_memory=True, shuffle=False)
             generation = {"max_new_tokens": max_new, "do_sample": False,
@@ -131,9 +138,9 @@ def main():
                 torch.cuda.synchronize(device)
                 seconds = time.perf_counter() - start
                 texts = model.tokenizer.batch_decode(token_ids, skip_special_tokens=True)
-                batch_rows = rows[offset:offset + len(texts)]
-                if len(texts) != len(batch_rows):
+                if len(texts) != batch["input_ids"].size(0):
                     raise RuntimeError("Generated batch size differs from input batch")
+                batch_rows = rows[offset:offset + len(texts)]
                 for row, prediction in zip(batch_rows, texts):
                     em, f1 = score_answer(prediction, row["answer"])
                     result = {"id": row["id"], "dataset": name, "prompt": row["prompt"],
@@ -144,11 +151,14 @@ def main():
                         result["input"] = row["input"]
                     predictions.append(result)
                 offset += len(texts)
+                progress.advance(len(texts))
         write_jsonl(directory / f"predictions.rank{rank}.jsonl", predictions)
         write_json(directory / f"runtime.rank{rank}.json", {"peak_allocated_gib": torch.cuda.max_memory_allocated(device) / 2**30})
         if world > 1:
+            log_progress(f"{label}: shard saved, waiting for all ranks")
             dist.barrier()
         if rank == 0:
+            log_progress(f"{label}: aggregating {len(selected)} samples")
             combined = [row for worker in range(world) for row in iter_jsonl(directory / f"predictions.rank{worker}.jsonl")]
             if len(combined) != len(selected) or {row["id"] for row in combined} != set(ids):
                 raise RuntimeError("Missing or duplicated GPU shard predictions")
@@ -160,7 +170,8 @@ def main():
                             "peak_allocated_gib": max(read_json(directory / f"runtime.rank{worker}.json")["peak_allocated_gib"]
                                                       for worker in range(world))})
             write_json(directory / "metrics.json", metrics)
-            print(f"R={ratio:g}, n={metrics['count']}, EM={metrics['micro']['em']:.4f}, F1={metrics['micro']['f1']:.4f}")
+            log_progress(f"{label}: n={metrics['count']}, EM={metrics['micro']['em']:.4f}, "
+                         f"F1={metrics['micro']['f1']:.4f}")
         if world > 1:
             dist.barrier()
     if world > 1:
