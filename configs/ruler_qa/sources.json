@@ -1,16 +1,24 @@
 {
   "train-v2.0.json": [
-    ["https://rajpurkar.github.io/SQuAD-explorer/dataset/train-v2.0.json", "68dcfbb971bd3e96d5b46c7177b16c1a4e7d4bdef19fb204502738552dede002"]
+    ["https://rajpurkar.github.io/SQuAD-explorer/dataset/train-v2.0.json", "68dcfbb971bd3e96d5b46c7177b16c1a4e7d4bdef19fb204502738552dede002"],
+    ["https://huggingface.co/datasets/GEM/squad_v2/resolve/eac7d401bef8f37ea4037c10f6408e84853c667b/squad_data/train-v2.0.json", "68dcfbb971bd3e96d5b46c7177b16c1a4e7d4bdef19fb204502738552dede002"],
+    ["https://hf-mirror.com/datasets/GEM/squad_v2/resolve/eac7d401bef8f37ea4037c10f6408e84853c667b/squad_data/train-v2.0.json", "68dcfbb971bd3e96d5b46c7177b16c1a4e7d4bdef19fb204502738552dede002"]
   ],
   "dev-v2.0.json": [
-    ["https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json", "80a5225e94905956a6446d296ca1093975c4d3b3260f1d6c8f68bc2ab77182d8"]
+    ["https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json", "80a5225e94905956a6446d296ca1093975c4d3b3260f1d6c8f68bc2ab77182d8"],
+    ["https://huggingface.co/datasets/GEM/squad_v2/resolve/eac7d401bef8f37ea4037c10f6408e84853c667b/squad_data/dev-v2.0.json", "80a5225e94905956a6446d296ca1093975c4d3b3260f1d6c8f68bc2ab77182d8"],
+    ["https://hf-mirror.com/datasets/GEM/squad_v2/resolve/eac7d401bef8f37ea4037c10f6408e84853c667b/squad_data/dev-v2.0.json", "80a5225e94905956a6446d296ca1093975c4d3b3260f1d6c8f68bc2ab77182d8"]
   ],
   "hotpot_train_v1.1.json": [
     ["https://curtis.ml.cmu.edu/datasets/hotpot/hotpot_train_v1.1.json", "26650cf50234ef5fb2e664ed70bbecdfd87815e6bffc257e068efea5cf7cd316"],
-    ["https://huggingface.co/datasets/namlh2004/hotpotqa/resolve/7e54db4656209750ff487f6fdf8e39a66dba136b/hotpot_train_v1.json", "26650cf50234ef5fb2e664ed70bbecdfd87815e6bffc257e068efea5cf7cd316"]
+    ["https://huggingface.co/datasets/namlh2004/hotpotqa/resolve/7e54db4656209750ff487f6fdf8e39a66dba136b/hotpot_train_v1.json", "26650cf50234ef5fb2e664ed70bbecdfd87815e6bffc257e068efea5cf7cd316"],
+    ["https://hf-mirror.com/datasets/namlh2004/hotpotqa/resolve/7e54db4656209750ff487f6fdf8e39a66dba136b/hotpot_train_v1.json", "26650cf50234ef5fb2e664ed70bbecdfd87815e6bffc257e068efea5cf7cd316"]
   ],
   "hotpot_dev_distractor_v1.json": [
     ["https://curtis.ml.cmu.edu/datasets/hotpot/hotpot_dev_distractor_v1.json", "4e9ecb5c8d3b719f624d66b60f8d56bf227f03914f5f0753d6fa1b359d7104ea"],
-    ["https://huggingface.co/datasets/namlh2004/hotpotqa/resolve/7e54db4656209750ff487f6fdf8e39a66dba136b/hotpot_dev_distractor_v1.json", "e3da074df24e8369009918aa5cdbdd254dadcde4c63f7569d36afd6f2268caa8"]
+    ["https://huggingface.co/datasets/RAGLAB/data/resolve/c33b09b7fa5099b89830e84f9bdff78329268d9b/eval_datasets/HotPotQA/hotpot_dev_distractor_v1.json", "4e9ecb5c8d3b719f624d66b60f8d56bf227f03914f5f0753d6fa1b359d7104ea"],
+    ["https://hf-mirror.com/datasets/RAGLAB/data/resolve/c33b09b7fa5099b89830e84f9bdff78329268d9b/eval_datasets/HotPotQA/hotpot_dev_distractor_v1.json", "4e9ecb5c8d3b719f624d66b60f8d56bf227f03914f5f0753d6fa1b359d7104ea"],
+    ["https://huggingface.co/datasets/namlh2004/hotpotqa/resolve/7e54db4656209750ff487f6fdf8e39a66dba136b/hotpot_dev_distractor_v1.json", "e3da074df24e8369009918aa5cdbdd254dadcde4c63f7569d36afd6f2268caa8"],
+    ["https://hf-mirror.com/datasets/namlh2004/hotpotqa/resolve/7e54db4656209750ff487f6fdf8e39a66dba136b/hotpot_dev_distractor_v1.json", "e3da074df24e8369009918aa5cdbdd254dadcde4c63f7569d36afd6f2268caa8"]
   ]
 }
