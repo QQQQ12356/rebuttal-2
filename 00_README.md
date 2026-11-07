@@ -53,3 +53,11 @@ bash scripts/sh/70_export_excel.sh
 默认训练每个源目标采样 5,000 条，五源共至多 25,000 条；不足时警告并使用全部合格样本，实际数量以 `manifest.json` 为准。默认测试每个 Twwilght 源 500 条、扫描压缩比 `[4,8,16,32]`。NarrativeQA 提供训练与数据适配，测试入口暂不启用。
 
 所有新训练、预处理、benchmark 和 Excel 路径遵守不覆盖已有产物的约束。旧脚本保存在 `legacy/` 用于核对；其路径已归档，不能作为新实验入口直接使用。旧 checkpoint 的转换见 [05 推理指南](docs/05_benchmark.md)。
+
+五数据集下载入口 `scripts/sh/10_download_data.sh` 现默认 `DOWNLOAD_MODE=local`：先把固定 commit 的源分片下载到 `artifacts/source_cache/`，再从本地解码并输出 raw JSONL；支持截断响应重试、可用时的分片续传以及分阶段/行数进度。达到训练样本上限后不再下载后续分片。`DOWNLOAD_MODE=stream` 可显式使用旧远端读取路径。
+
+若遇到 `IncompleteRead`、`ChunkedEncodingError` 或解析文件列表后长时间无输出，请先按 [02 下载指南第5节](docs/02_download.md#5-incompleteread--chunkedencodingerror-修复) 更新代码并做20条样本验证。分片缓存应保留，raw JSONL 转换中断则从头转换；两种恢复粒度不同。此下载模式属于五数据集入口，NIAH 独立下载入口的当前行为见 [NIAH 下载指南](docs/niah/02_download.md)。
+
+五数据集下载入口 `scripts/sh/10_download_data.sh` 现默认 `DOWNLOAD_MODE=local`：先把固定 commit 的源分片下载到 `artifacts/source_cache/`，再从本地解码并输出 raw JSONL；支持截断响应重试、可用时的分片续传以及分阶段/行数进度。达到训练样本上限后不再下载后续分片。`DOWNLOAD_MODE=stream` 可显式使用旧远端读取路径。
+
+若遇到 `IncompleteRead`、`ChunkedEncodingError` 或解析文件列表后长时间无输出，请先按 [02 下载指南第5节](docs/02_download.md#5-incompleteread--chunkedencodingerror-修复) 更新代码并做20条样本验证。分片缓存应保留，raw JSONL 转换中断则从头转换；两种恢复粒度不同。此下载模式属于五数据集入口，NIAH 独立下载入口的当前行为见 [NIAH 下载指南](docs/niah/02_download.md)。

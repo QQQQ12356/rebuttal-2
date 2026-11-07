@@ -47,6 +47,16 @@ bash scripts/sh/10_download_data.sh
 
 镜像站是否同步目标仓库和转换分支由镜像服务决定。下载失败应先核对 endpoint、revision、权限和网络；程序不会替换成其他数据集。私有/受限仓库可先 `hf auth login`；不要把 token 写入脚本或文档。
 
+五数据集的新版下载入口默认使用本地分片模式，其 `SOURCE_CACHE` 与 `HF_HOME` 是不同位置：HF_HOME 仍供认证、模型和其他 Hub/datasets 调用使用；SOURCE_CACHE 显式保存该入口的源分片，默认 artifacts/source_cache，不会因为只修改 HF_HOME 就迁移。磁盘紧张时把两者分别设到合适位置，并保持 SOURCE_CACHE 以复用完整/未完成分片。
+
+```bash
+SOURCE_CACHE=/大容量磁盘/seco_source_cache \
+HF_HUB_DOWNLOAD_TIMEOUT=120 HF_HUB_ETAG_TIMEOUT=60 \
+bash scripts/sh/10_download_data.sh
+```
+
+文件请求超时由 HF_HUB_DOWNLOAD_TIMEOUT 控制；HEAD/ETag 超时由 HF_HUB_ETAG_TIMEOUT 控制；dataset-info API 超时由该脚本的 METADATA_TIMEOUT 单独控制，默认60秒。它们不是整次命令的总时限，SDK内部也可能重试。该 Shell 入口默认 HF_HUB_DISABLE_XET=1、HF_HUB_ENABLE_HF_TRANSFER=0，选择 HTTP 部分文件恢复路径；直接调用 Python 时如需相同行为，应在启动 Python 前显式设置这些环境变量。更多故障处理见 [下载指南](02_download.md#5-incompleteread--chunkedencodingerror-修复)。
+
 完整下载并预处理后可以启用离线模式：
 
 ```bash

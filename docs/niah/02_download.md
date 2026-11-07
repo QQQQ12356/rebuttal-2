@@ -51,3 +51,9 @@ HF_ENDPOINT 只作用于 Hub 请求。Paul Graham 从 GitHub 解析 commit，再
 本地背景格式：`{"id":"文档标识","text":"正文"}`，存为 `RAW_DIR/<corpus>.jsonl`。本地监督格式至少为 `{"id":"样本标识","context":"正文","query":"问题","answer":"答案"}`；若带 split/source_split，必须为 train。没有 sidecar 的输入会标明 local_file 与实际哈希，不补造 Hub commit。
 
 模型下载使用 `scripts/niah/sh/01_download_model.sh`，默认保存到此前同一默认模型目录以复用文件。`MODEL_ID/MODEL_PATH/REVISION` 可分别改仓库、目录、版本；改变 tokenizer 后重新生成 NIAH 训练集和网格。
+
+## 4. 与五数据集下载修复的适用范围
+
+本页的独立 NIAH 下载器仍通过自己的 HF 流式读取和 GitHub archive 实现获取原始数据。五数据集入口新增的 DOWNLOAD_MODE=local、SOURCE_CACHE、分片重试参数未接入此 NIAH 入口；不要把变量传给 NIAH Shell 后误以为其下载路径已改变。HF_HOME/HF_ENDPOINT 仍按本页公共规则生效。
+
+若 NIAH 下载也遇到网络断连，应保留完整报错，按本页说明准备可追溯的本地 raw JSONL，或修复对应源的网络访问。五数据集的具体修复行为和验证命令见 [02 下载指南](../02_download.md#5-incompleteread--chunkedencodingerror-修复)。

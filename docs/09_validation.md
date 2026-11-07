@@ -36,6 +36,14 @@ bash scripts/sh/90_validate.sh
 
 这些是已编写、待 Linux 执行的测试，未伪造运行结果。如果在 GPU BF16/FP16 对比原始与分块路径，应另记录最大误差、中心/分配一致性与最终生成一致性；近似相似度平局可能对浮点实现敏感。
 
+只验证本次下载修复，可在 Linux 项目根运行以下命令；用例使用临时 Parquet/JSON 和外部 Hub/HTTP 接口替身，不请求真实数据源，也不加载模型：
+
+```bash
+python -m unittest discover -s tests -p 'test_downloads.py' -v
+```
+
+该用例不能证明镜像当前可达或真实断点续传成功。网络验证另按 [02 下载指南第5节](02_download.md#5-incompleteread--chunkedencodingerror-修复) 执行20条样本探针，保留实际日志和 manifest。
+
 ## 3. 小规模 GPU smoke test
 
 1. 使用新的 RAW_DIR 下载小候选池，四个 benchmark 保持原测试身份。
@@ -53,6 +61,10 @@ CPU 等价性测试不能代替 ZeRO 的真实集成验证。需要报告实验�
 
 | 症状 | 检查与处理 |
 | --- | --- |
+| Resolving data files 完成后无输出 | 旧 stream 模式可能仍在首次远端读取；更新为默认 local 模式并查看 download/local/rows 阶段日志 |
+| IncompleteRead / ChunkedEncodingError | 使用 local 模式保留 SOURCE_CACHE 和 .incomplete 重试；确认 endpoint 文件链路，增加超时不能修复断连 |
+| PyGILState_Release 出现在退出阶段 | 先处理更早的网络异常；若纯本地读取仍复现，记录完整日志并检查 native 库环境，不据退出栈直接确定根因 |
+| No supported dataset files / Cannot identify split files | 核对固定 commit 的文件映射；注册表增加明确 data_files，不能换成其他 split 凑数 |
 | tokenizer fingerprint mismatch | 预处理与训练/推理模型不一致；检查 MODEL_PATH、tokenizer 文件和版本，重新生成 prepared |
 | No eligible narrativeqa examples | 全文太长或候选故事集中；查看 long_input/long_decoder 计数，扩大候选池或预算，禁止静默改用摘要 |
 | 请求 5000 但只选到较少条 | 看 eligible/selected、去污染和长度分布；需要严格配额用 STRICT_COUNT=1 |

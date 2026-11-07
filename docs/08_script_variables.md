@@ -36,6 +36,9 @@
 | 同上 | ROW_BATCH_SIZE / PROGRESS_EVERY | 16 / 100；本地 Arrow 批大小与输出进度间隔 |
 | 同上 | HF_HUB_DOWNLOAD_TIMEOUT / HF_HUB_ETAG_TIMEOUT | 120 / 60秒；用户环境中显式设置的值优先 |
 | 同上 | HF_HUB_DISABLE_XET / HF_HUB_ENABLE_HF_TRANSFER | 1 / 0；默认 HTTP 可续传路径，均可显式覆盖 |
+| 同上 | PYTHONUNBUFFERED | 固定设为1，使已有日志及时输出；脚本还显式 flush 阶段/行数日志 |
+
+本节新增的 DOWNLOAD_MODE、SOURCE_CACHE、重试及传输默认值属于五数据集的 10_download_data.sh，不是所有入口的公共设置。SOURCE_CACHE 显式指定源分片缓存，不随 HF_HOME 自动迁移；直接执行 Python 时不会自动获得 Shell 中设置的 HF_HUB_* 默认值。详情及服务器更新/小样本命令见 [02 下载指南](02_download.md#5-incompleteread--chunkedencodingerror-修复)。
 
 ## 3. 预处理 `20_prepare_data.sh`
 
