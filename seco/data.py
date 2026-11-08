@@ -1,7 +1,9 @@
 """Dataset adapters, shared token boundaries, deterministic sampling and padding."""
 from __future__ import annotations
 
+from collections import defaultdict
 import html
+from itertools import islice, zip_longest
 import math
 import random
 from typing import Any
@@ -13,6 +15,19 @@ DATASETS = ("naturalqa", "2wikimqa", "hotpotqa", "narrativeqa", "multinews")
 BENCHMARKS = ("naturalqa", "2wikimqa", "hotpotqa", "multinews")
 QA_PROMPT = "\nQuestion: {question}\nAnswer the question using the context. Give only the answer.\nAnswer:"
 NEWS_PROMPT = "\nNow, write a one-page summary of all the news. Summary:"
+
+
+def limit_grid_rows(rows: list[dict], limit: int | None, *, cell_keys: tuple[str, ...]) -> list[dict]:
+    """Take a reproducible subset, cycling through cells before taking more from any cell."""
+    if limit is None or limit >= len(rows):
+        return rows
+    cells = defaultdict(list)
+    for index, row in enumerate(rows):
+        cells[tuple(row[key] for key in cell_keys)].append(index)
+    groups = list(cells.values())
+    random.Random(0).shuffle(groups)
+    indices = (index for cycle in zip_longest(*groups) for index in cycle if index is not None)
+    return [rows[index] for index in sorted(islice(indices, limit))]
 
 
 def records(value: Any) -> list[dict]:

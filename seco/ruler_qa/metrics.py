@@ -28,8 +28,9 @@ def validate_grid(rows, manifest):
         if row["id"] != expected_id:
             raise ValueError(f"Test row identity does not match its task, source ID and length: {row['id']}")
         groups[row["task"]].append(row)
-    if set(groups) != set(TASKS):
-        raise ValueError("Grid must include qa_1 and qa_2")
+    expected_tasks = set(manifest["counts"]) if "prepared_test_identity" in manifest else set(TASKS)
+    if not expected_tasks or not expected_tasks.issubset(TASKS) or set(groups) != expected_tasks:
+        raise ValueError("Grid tasks do not match the expected RULER QA tasks")
     for task, items in groups.items():
         ids = {row["id"] for row in items}
         counts = Counter(str(row["target_length"]) for row in items)

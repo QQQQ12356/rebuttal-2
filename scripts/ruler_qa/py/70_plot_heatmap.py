@@ -27,6 +27,8 @@ def main():
     ratios = sorted(metadata["arguments"]["ratios"])
     lengths = sorted(manifest["arguments"]["test_lengths"])
     expected = {(task, length) for task in TASKS for length in lengths}
+    if "prepared_test_identity" in manifest:
+        expected = {(task, int(length)) for task, counts in manifest["counts"].items() for length in counts}
     values = {}
     for ratio in ratios:
         metrics = read_json(run / ratio_directory(ratio) / "metrics.json")
@@ -48,7 +50,8 @@ def main():
     writer = csv.DictWriter(csv_text, fieldnames=fields)
     writer.writeheader()
     for axis, (task, title) in zip(axes[0], (("qa_1", "SQuAD 2.0"), ("qa_2", "HotpotQA"))):
-        matrix = [[values[ratio][task, length][args.metric] * 100 for length in lengths] for ratio in ratios]
+        matrix = [[values[ratio].get((task, length), {}).get(args.metric, float("nan")) * 100
+                   for length in lengths] for ratio in ratios]
         image = axis.imshow(matrix, vmin=0, vmax=100, cmap="viridis", aspect="auto")
         axis.set_title(f"{task} · {title}")
         axis.set_xticks(range(len(lengths)), [f"{n // 1024}K" if n % 1024 == 0 else str(n) for n in lengths])
@@ -58,10 +61,14 @@ def main():
         for y, ratio in enumerate(ratios):
             for x, length in enumerate(lengths):
                 value = matrix[y][x]
-                axis.text(x, y, f"{value:.1f}", ha="center", va="center", color="white" if value < 50 else "black")
-                writer.writerow({"ratio": ratio, **values[ratio][task, length]})
+                cell = values[ratio].get((task, length))
+                label = f"{value:.1f}" if cell else "NA"
+                axis.text(x, y, label, ha="center", va="center", color="white" if cell and value < 50 else "black")
+                if cell:
+                    writer.writerow({"ratio": ratio, **cell})
     metric_label = {"ruler_score": "RULER QA substring score", "em": "Exact match", "f1": "Token F1"}[args.metric]
-    fig.suptitle(f"SeCo · {metric_label}")
+    subset = " [SUBSET]" if "prepared_test_identity" in manifest else ""
+    fig.suptitle(f"SeCo · {metric_label}{subset}")
     fig.colorbar(image, ax=list(axes[0]), label="Score (%)")
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output, dpi=args.dpi)

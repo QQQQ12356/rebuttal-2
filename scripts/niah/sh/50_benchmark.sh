@@ -13,11 +13,13 @@ WORKERS="${WORKERS:-2}"
 WARMUP_BATCHES="${WARMUP_BATCHES:-1}"
 MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-64}"                     # Must fit grid generation_budget.
 REPETITION_PENALTY="${REPETITION_PENALTY:-1.0}"
+MAX_TEST_SAMPLES="${MAX_TEST_SAMPLES:-}"
 PLAN_ONLY="${PLAN_ONLY:-0}"
 options=(--checkpoint "$CHECKPOINT" --grid-dir "$GRID_DIR" --output "$OUTPUT_DIR"
          --ratios "${RATIOS[@]}" --batch-size "$BATCH_SIZE" --workers "$WORKERS"
          --warmup-batches "$WARMUP_BATCHES" --max-new-tokens "$MAX_NEW_TOKENS"
          --repetition-penalty "$REPETITION_PENALTY")
+[[ -n "$MAX_TEST_SAMPLES" ]] && options+=(--max-test-samples "$MAX_TEST_SAMPLES")
 if [[ "$PLAN_ONLY" == 1 ]]; then
     WORLD_SIZE="$NPROC_PER_NODE" "$PYTHON_BIN" scripts/niah/py/50_benchmark.py "${options[@]}" --plan-only "$@"
     exit 0

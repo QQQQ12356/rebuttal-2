@@ -25,7 +25,8 @@ plan-only 检查 checkpoint 元数据、grid 文件哈希、比例和生成预�
 | --model | 无 | adapter 的原始基座迁移路径，必须保持相同权重 |
 | --grid-dir | artifacts/niah/prepared/grid_v1 | 独立固定测试网格 |
 | --output | 必填 | 新 NIAH benchmark 目录，拒绝覆盖 |
-| --ratios | 4 8 16 32 | 每个固定压缩比测全部网格，无重复项且不小于 grid.min_ratio |
+| --ratios | 4 8 16 32 | 各压缩比使用相同样本，无重复项且不小于 grid.min_ratio |
+| --max-test-samples | 全部 | 每个压缩比的样本总数上限，须为正整数 |
 | --batch-size / --workers | 1 / 2 | 每卡 batch 与数据加载 worker |
 | --warmup-batches | 1 | 重复首 batch 预热次数，0 关闭 |
 | --max-new-tokens | 64 | 不得超过 grid.generation_budget |
@@ -34,7 +35,9 @@ plan-only 检查 checkpoint 元数据、grid 文件哈希、比例和生成预�
 | --no-merge | 关闭 | adapter 原样运行，用于合并前后比较 |
 | --plan-only | 关闭 | 不分配 CUDA 的计划检查 |
 
-不能在此入口只随意截取测试样本：需要小规模实验时用新的小 grid 配置，保留每格完整重复数。多卡测试为数据并行，每张卡仍需容纳完整双模型。训练 ZeRO-3 能放下不代表测试也能放下；长注意力和原始 SeCo 聚类仍可能耗时较长，先验证显存。
+设置 `MAX_TEST_SAMPLES=32` 可让每个压缩比最多评测 32 条。脚本按长度 × 深度格子轮流选取固定子集，所有压缩比复用同一批样本。子集指标会标记为不完整网格，绘图时传入 `--allow-incomplete`。
+
+多卡测试为数据并行，每张卡仍需容纳完整双模型。训练 ZeRO-3 能放下不代表测试也能放下；长注意力和原始 SeCo 聚类仍可能耗时较长，先验证显存。
 
 输出：
 

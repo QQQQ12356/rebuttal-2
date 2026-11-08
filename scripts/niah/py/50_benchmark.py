@@ -6,7 +6,7 @@ import os
 import time
 
 from niah_bootstrap import require_linux
-from seco.data import Collator, tokenizer_fingerprint
+from seco.data import Collator, limit_grid_rows, tokenizer_fingerprint
 from seco.io import fingerprint, iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.niah.metrics import aggregate, score_prediction
 from seco.progress import BatchProgress, log_progress
@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--grid-dir", default="artifacts/niah/prepared/grid_v1")
     parser.add_argument("--output", required=True, help="New independent NIAH benchmark directory")
     parser.add_argument("--ratios", nargs="+", type=float, default=[4, 8, 16, 32])
+    parser.add_argument("--max-test-samples", type=int, help="Cap the total number of test samples per ratio")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--warmup-batches", type=int, default=1)
@@ -29,6 +30,8 @@ def main():
     parser.add_argument("--no-merge", action="store_true")
     parser.add_argument("--plan-only", action="store_true", help="Verify grid and checkpoint metadata without importing torch")
     args = parser.parse_args()
+    if args.max_test_samples is not None and args.max_test_samples < 1:
+        parser.error("--max-test-samples must be positive")
     if len(set(args.ratios)) != len(args.ratios) or not args.ratios or any(not math.isfinite(r) or r < 1 for r in args.ratios):
         parser.error("ratios must be distinct finite numbers >= 1")
     if args.batch_size < 1 or min(args.workers, args.warmup_batches) < 0 or args.max_new_tokens < 1 or args.repetition_penalty <= 0:
@@ -52,8 +55,10 @@ def main():
     if output.exists():
         raise FileExistsError(f"Choose a new NIAH benchmark directory: {output}")
     if args.plan_only:
+        sample_count = min(manifest["count"], args.max_test_samples or manifest["count"])
         print(json.dumps({"checkpoint": str(source), "grid_examples": manifest["count"],
-                          "ratios": args.ratios, "scored_generation_examples": manifest["count"] * len(args.ratios),
+                          "test_samples": sample_count, "ratios": args.ratios,
+                          "scored_generation_examples": sample_count * len(args.ratios),
                           "maximum_encoder_length": max(manifest["grid"]["lengths"]),
                           "world_size": int(os.getenv("WORLD_SIZE", "1")),
                           "model_position_limits_checked": False}, indent=2))
@@ -98,10 +103,16 @@ def main():
         centers = min(row["context_tokens"], max(2, math.ceil(row["context_tokens"] / min(args.ratios))))
         if max(len(row["input_ids"]), centers + row["prompt_tokens"] + args.max_new_tokens) > model.config.max_position_embeddings:
             raise ValueError(f"NIAH sample exceeds model position limit: {row['id']}")
+    rows = limit_grid_rows(rows, args.max_test_samples, cell_keys=("sequence_length", "depth_percent"))
+    sample_selection = {}
+    if len(rows) < manifest["count"]:
+        sample_selection = {"count": len(rows), "id_hash": fingerprint(sorted(row["id"] for row in rows))}
+    grid_identity = fingerprint([manifest, sample_selection] if sample_selection else manifest)
     if rank == 0:
         identity = "artifact.json" if (source / "artifact.json").exists() else "model.safetensors"
         write_json(output / "benchmark.json", {"task": "niah", "arguments": vars(args), "experiment": experiment,
                    "grid_manifest": manifest, "grid_manifest_sha256": sha256_file(prepared / "manifest.json"),
+                   "sample_selection": sample_selection, "grid_identity": grid_identity,
                    "checkpoint_identity": sha256_file(source / identity), "world_size": world,
                    "gpu": torch.cuda.get_device_name(device), "attention": model.model_config["attn_implementation"],
                    "timing": "amortized batch seconds per example; encoder+compression+decoder, excluding H2D/loading"})
@@ -153,11 +164,11 @@ def main():
             combined = [row for worker in range(world) for row in iter_jsonl(directory / f"predictions.rank{worker}.jsonl")]
             if {row["id"] for row in combined} != {row["id"] for row in rows}:
                 raise ValueError("NIAH shard IDs differ from fixed grid IDs")
-            metrics = aggregate(combined, manifest["grid"])
+            metrics = aggregate(combined, manifest["grid"], allow_incomplete=bool(sample_selection))
             combined.sort(key=lambda row: (row["sequence_length"], row["depth_percent"], row["trial"]))
             write_jsonl(directory / "predictions.jsonl", combined)
             metrics.update({"ratio": ratio, "checkpoint": str(source),
-                            "grid_identity": fingerprint(manifest),
+                            "grid_identity": grid_identity,
                             "grid_manifest_sha256": sha256_file(prepared / "manifest.json"),
                             "mean_seconds_per_sample": sum(row["seconds_per_sample"] for row in combined) / len(combined),
                             "peak_allocated_gib": max(read_json(directory / f"runtime.rank{worker}.json")["peak_allocated_gib"] for worker in range(world))})

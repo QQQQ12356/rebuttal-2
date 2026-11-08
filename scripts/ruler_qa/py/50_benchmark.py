@@ -1,13 +1,14 @@
 """Generate on one fixed RULER QA grid at each requested compression ratio."""
 import argparse
+from collections import Counter, defaultdict
 import json
 import math
 import os
 import time
 
 from ruler_bootstrap import require_linux
-from seco.data import Collator, tokenizer_fingerprint
-from seco.io import iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
+from seco.data import Collator, limit_grid_rows, tokenizer_fingerprint
+from seco.io import fingerprint, iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.progress import BatchProgress
 from seco.ruler_qa.metrics import aggregate, ratio_directory, score_prediction, validate_grid
 
@@ -20,18 +21,24 @@ def main():
     parser.add_argument("--test-dir", default="artifacts/ruler_qa/prepared/test_v1")
     parser.add_argument("--output", required=True)
     parser.add_argument("--ratios", nargs="+", type=float, default=[4, 8, 16, 32])
+    parser.add_argument("--max-test-samples", type=int, help="Cap the total number of test samples per ratio")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--warmup-batches", type=int, default=1)
     parser.add_argument("--max-new-tokens", type=int, default=32)
+    parser.add_argument("--repetition-penalty", type=float, default=1.0)
     parser.add_argument("--attention", choices=("eager", "sdpa", "flash_attention_2"))
     parser.add_argument("--no-merge", action="store_true")
     parser.add_argument("--plan-only", action="store_true")
     args = parser.parse_args()
+    if args.max_test_samples is not None and args.max_test_samples < 1:
+        parser.error("--max-test-samples must be positive")
     if len(set(args.ratios)) != len(args.ratios) or any(not math.isfinite(r) or r < 1 for r in args.ratios):
         parser.error("Ratios must be distinct finite numbers >= 1")
     if min(args.batch_size, args.max_new_tokens) < 1 or min(args.workers, args.warmup_batches) < 0:
         parser.error("Invalid batch or generation options")
+    if not math.isfinite(args.repetition_penalty) or args.repetition_penalty <= 0:
+        parser.error("Repetition penalty must be finite and positive")
 
     test, checkpoint, output = map(project_path, (args.test_dir, args.checkpoint, args.output))
     rank, world = int(os.getenv("RANK", "0")), int(os.getenv("WORLD_SIZE", "1"))
@@ -60,8 +67,18 @@ def main():
         raise ValueError("RULER QA checkpoint lacks training question identity")
     if any(row["question_key"] in training_keys for row in rows):
         raise ValueError("Test questions overlap the checkpoint's RULER QA training set")
+    prepared_count = len(rows)
+    rows = limit_grid_rows(rows, args.max_test_samples, cell_keys=("task", "target_length"))
+    if len(rows) < prepared_count:
+        counts, ids = defaultdict(Counter), defaultdict(list)
+        for row in rows:
+            counts[row["task"]][str(row["target_length"])] += 1
+            ids[row["task"]].append(row["id"])
+        manifest = {**manifest, "prepared_test_identity": fingerprint(manifest), "counts": dict(counts),
+                    "sample_id_hashes": {task: fingerprint(sorted(task_ids)) for task, task_ids in ids.items()}}
     if args.plan_only:
         print(json.dumps({"counts": manifest["counts"], "ratios": args.ratios, "world_size": world,
+                          "prepared_test_samples": prepared_count, "test_samples": len(rows),
                           "generation_examples": len(rows) * len(args.ratios)}, indent=2))
         return
 
@@ -100,7 +117,7 @@ def main():
     loader = DataLoader(shard, batch_size=args.batch_size, num_workers=args.workers, pin_memory=True,
                         collate_fn=Collator(model.tokenizer.pad_token_id, training=False))
     generation = {"max_new_tokens": args.max_new_tokens, "do_sample": False, "num_beams": 1,
-                  "repetition_penalty": 1.0, "return_dict_in_generate": False, "output_scores": False}
+                  "repetition_penalty": args.repetition_penalty, "return_dict_in_generate": False, "output_scores": False}
     for ratio in args.ratios:
         directory = output / ratio_directory(ratio)
         progress = BatchProgress(f"[ruler_qa rank={rank} R={ratio:g}]", len(shard))

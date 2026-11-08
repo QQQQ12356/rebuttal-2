@@ -9,6 +9,8 @@ BENCHMARK_DIR="$OUTPUT_DIR" bash scripts/ruler_qa/sh/70_plot_heatmap.sh
 
 默认在同一测试网格上按 `4 8 16 32` 四个固定压缩比分别贪心生成，每题最多 32 个新 token。用 `RATIOS='4 8'` 缩短评测，用 `TEST_DIR` 指定另一份已准备网格。任一压缩比需 ≥ 网格的 `min_ratio`，生成上限需 ≤ `generation_budget`。
 
+设置 `MAX_TEST_SAMPLES=32`（Python 参数 `--max-test-samples 32`）可让每个压缩比最多评测 32 条。脚本按任务 × 长度格子轮流选取固定子集，所有压缩比复用同一批样本。默认评测全量。子集热力图将未采样的格子显示为 `NA`。
+
 ```bash
 CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2   CHECKPOINT="$RUN_DIR/final_merged"   OUTPUT_DIR=artifacts/ruler_qa/benchmarks/qa_merged_v1   bash scripts/ruler_qa/sh/50_benchmark.sh
 ```
