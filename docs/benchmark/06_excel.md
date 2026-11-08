@@ -17,16 +17,15 @@ python scripts/benchmark/py/70_export_excel.py \
 | `--output` / EXCEL_PATH | Shell 自动生成唯一文件名 | 新 xlsx 路径，已有文件拒绝覆盖 |
 | `--include-details` / INCLUDE_DETAILS | Python 关闭，Shell 为 1 | 从每个指标文件旁的 predictions.jsonl 读取原始预测内容 |
 
-多个 pattern 会先去重文件路径，再合并导出；无匹配项或指标格式错误会直接报错。
+多个 pattern 会先去重文件路径，再按测试目录分组导出。每次测试占一个以目录名命名的工作表，`ratio_4`、`ratio_8` 等压缩比在同一张表中通过 `ratio` 列区分。无匹配项或指标格式错误会直接报错。
 
-| 工作表 | 内容 |
+| 工作表区块 | 内容 |
 | --- | --- |
-| Summary_1 | 每实验/压缩比/数据集的 count、EM、F1、计时、峰值显存、checkpoint、基座、训练比例模式、配置哈希、来源路径；另含 micro/macro 行 |
-| Predictions_1 | 每样本 ID、数据集、比例、模型输出、参考答案、重算 EM/F1、prompt、可选完整 context |
-| LongText_1 | 超过 30,000 字符的正文/输出/答案按 source、id、field、part 拆分存储，防止 Excel 单格长度限制截断 |
-| Readme_1 | 指标尺度、平均规则、计时与长文本说明 |
+| 指标汇总 | 每压缩比/数据集的 count、EM、F1、计时、峰值显存、checkpoint、基座、训练比例模式、配置哈希、来源路径。micro 按样本数加权，macro 对数据集取平均 |
+| 预测详情 | 每样本 ID、数据集、比例、模型输出、参考答案、重算 EM/F1、prompt、可选完整 context |
+| 长文本 | 超过 30,000 字符的文本在对应样本下方分行，存入 `field`、`part`、`text` 列 |
 
-达到 Excel 单 sheet 行数上限时自动新增同类编号 sheet。长文本按 part 升序拼回；XML 不允许的控制字符编码为字面 `\uXXXX`。包括 `=...` 在内的模型输出都作为普通文本单元格，不执行为公式。EM/F1 保留数值 0–1 并显示百分比，不转为不可计算的字符串。
+达到 Excel 单表行数上限时，自动为该测试添加编号续表。长文本按 part 升序拼回；XML 不允许的控制字符编码为字面 `\uXXXX`。包括 `=...` 在内的模型输出都作为普通文本单元格，不执行为公式。EM/F1 保留数值 0–1 并显示百分比。计时为 batch 时间均摊至每条样本。
 
 若需要完整输入内容，benchmark 时先设置 `INCLUDE_CONTEXT=1`。没有保存 context 的结果不能在 Excel 导出阶段凭空恢复正文；仍可导出预测、答案和 prompt。含详情导出可能较大，`INCLUDE_DETAILS=0` 只汇总指标。
 
