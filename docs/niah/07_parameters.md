@@ -1,6 +1,6 @@
 # 07 NIAH 脚本变量索引
 
-NIAH Shell 位于 scripts/niah/sh，Python 位于 scripts/niah/py。标量默认值可用环境变量覆盖；数组直接编辑脚本或在命令末尾传同名 Python 参数。优先级：末尾显式 Python 参数 > Shell 传入值 > 对应 JSON 默认。所有相对路径基于项目根，入口会自动 cd。
+NIAH Shell 位于 scripts/niah/sh，Python 位于 scripts/niah/py。标量和评测的 `RATIOS` 可用环境变量覆盖。其他 Bash 数组可编辑脚本或在命令末尾传同名 Python 参数。一般优先级为末尾显式 Python 参数、Shell 传入值、JSON 默认。Shell 入口会切换到项目根目录。
 
 ## 1. 公共与下载
 
@@ -63,13 +63,17 @@ NIAH Shell 位于 scripts/niah/sh，Python 位于 scripts/niah/py。标量默认
 | 同上 | MERGED_DIR / MERGE_DEVICE | CHECKPOINT 后接 _merged / cpu |
 | 50_benchmark.sh | CUDA_VISIBLE_DEVICES / NPROC_PER_NODE | 0 / 1；每张卡完整双模型 |
 | 同上 | CHECKPOINT | 必改为真实 merged 或 adapter 目录 |
-| 同上 | GRID_DIR | NIAH_ROOT/prepared/grid_v1 |
+| 同上 | EVAL_TRAIN | 0 使用留出网格；1 使用 checkpoint 对应的训练数据 |
+| 同上 | GRID_DIR | NIAH_ROOT/prepared/grid_v1；仅留出模式使用 |
+| 同上 | PREPARED_DIR | NIAH_ROOT/prepared/train_v1；仅训练集模式使用 |
 | 同上 | OUTPUT_DIR | 自动唯一 NIAH benchmark 目录 |
-| 同上 | RATIOS | [4,8,16,32]；Bash 数组，或末尾 --ratios 16 32 |
+| 同上 | RATIOS | 4 8 16 32；环境变量用空格分隔，如 `RATIOS='16 32'` |
+| 同上 | MAX_TEST_SAMPLES | 空为全量；正整数限制各压缩比的样本数 |
 | 同上 | BATCH_SIZE / WORKERS | 1 / 2 |
 | 同上 | WARMUP_BATCHES | 1；不漏评真实样本 |
 | 同上 | MAX_NEW_TOKENS / REPETITION_PENALTY | 64 / 1.0；解码预算和重复惩罚 |
-| 同上 | PLAN_ONLY | 0；1 检查元数据/网格，无模型分配 |
+| 同上 | PLAN_ONLY | 0；1 检查所选数据与元数据，无模型分配 |
+| 51_benchmark_train.sh | EVAL_TRAIN 及 50 的共用变量 | 必须显式设 `EVAL_TRAIN=1`；详见 [09](09_train_benchmark.md) |
 | 60_score.sh | PREDICTIONS | 必改为真实 predictions.jsonl |
 | 70_plot_heatmap.sh | BENCHMARK_DIR | 必改为真实 benchmark 根目录 |
 | 同上 | INPUTS | BENCHMARK_DIR/ratio_*/metrics.json，加引号的数组 |

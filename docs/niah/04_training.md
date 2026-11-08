@@ -78,6 +78,6 @@ RESUME=artifacts/niah/runs/真实run/checkpoint-500 MAX_STEPS=2000 \
 
 恢复要求同模型、数据 manifest、backend、world size 和配置，只允许变更累计 max_steps。run 目录默认由 RESUME 的父目录确定。改变比例数组、样本集、LoRA 或进程数应开新 run。
 
-训练归档还保存 NIAH 背景文档与已选答案的哈希；NIAH benchmark 会再与当前 checkpoint 核对背景/答案重复。不同训练实验应共用同一份固定 held-out grid，不能因为某次结果低而换测试 seed。
+训练归档还保存 NIAH 背景文档与已选答案的哈希，留出网格评测会用这些哈希核对背景和答案重复。比较不同训练实验时，使用同一份固定留出网格。训练后也可使用 checkpoint 对应的 `PREPARED_DIR` 做 [09 训练集评测](09_train_benchmark.md)。这一步在训练结束后单独执行。
 
 合并使用独立 `scripts/niah/sh/40_merge_lora.sh`，底层复用统一 PEFT 合并实现。默认 CPU 合并、输出 `${CHECKPOINT}_merged`；已有目录拒绝覆盖。完整多节点设置及 native checkpoint 的限制与 [Benchmark 训练指南](../benchmark/04_training.md) 一致。

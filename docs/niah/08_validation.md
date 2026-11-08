@@ -23,6 +23,8 @@ bash scripts/niah/sh/90_validate.sh
 | 监督源重新分词/拒绝 test split | 混用其他 tokenizer IDs 或把测试题训练 |
 | accuracy 单格重复数 | 把0/1与1–10或百分比混淆 |
 | 重复/漏测 grid 检查 | 分片补齐重复、缺失格子被补零 |
+| 训练集评测数据绑定与固定抽样 | checkpoint 与训练 manifest 不匹配、训练文件被修改、同上限抽样不一致 |
+| 训练集整体及分组指标 | Cogito 行缺少网格字段、来源或任务分组计分错误 |
 | 数字边界 hit 检查 | 部分数字子串假阳性 |
 | 临时 PNG/PDF/CSV 导出 | headless绘图、输出协议、逐格值一致性 |
 
@@ -38,6 +40,8 @@ bash scripts/niah/sh/90_validate.sh
 6. 合并 final，只测 --ratios 16，确认12个预测、6格且每格2条；比较 adapter --no-merge 与 merged 结果。
 7. 使用相同 grid 和模型对比单卡/多卡 ID集合、EM/F1，再作图抽查CSV中一格与预测结果相同。
 8. 扩大长度/重复数/比例；128K从单格、batch1开始，不能直接拿参考图作为显存预算。
+
+另用第 3 步的 checkpoint 与 `train_smoke` 目录执行 [09 的训练集预检与评测](09_train_benchmark.md)。设置 `MAX_TEST_SAMPLES=8 RATIOS='4 8'`，核对两份预测各有 8 条且 ID 集相同，`benchmark.json` 标记 `split=train`。将 `PREPARED_DIR` 换成另一版本时，应在加载模型前拒绝运行。
 
 第一次使用自定义 TRAINING_MANIFEST 时核对其指向当前 NIAH train 数据版本。后续模型对比应固定同一 grid，不因模型结果变化更改样本、问题、答案或深度。
 

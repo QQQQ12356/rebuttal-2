@@ -53,6 +53,8 @@ Python 入口参数：`--config` 选择上述配置；`--raw-dir/--output` 选�
 
 输出目录含 `train.jsonl` 和 `manifest.json`。manifest 为 `format=seco-data-v1, task=niah, kind=train`，记录源哈希/commit、训练背景文档身份、已选答案哈希、tokenizer 指纹、配置与各源统计。只有完成 manifest 的产物可训练。默认输出不可覆盖；改变配置后使用新 PREPARED_DIR。
 
+保留 checkpoint 对应的这两个文件，以便后续按 [09 训练集评测](09_train_benchmark.md) 在原样本上生成并计分。该入口会核对 checkpoint 保存的 manifest SHA-256，以及 manifest 记录的 `train.jsonl` SHA-256。
+
 统计含 scanned、eligible、selected、duplicates、heldout_overlap、long_input、long_answer、long_decoder 等；零值可不出现。没有合格样本会报错。默认长度下较长的 Cogito 样本可能因 Qwen token 数超过上限被过滤，不能直接承诺每源最终 2000 条。
 
 扩大样本数时同时扩大 raw 候选池和 synthetic.candidates。降低压缩比下限时同步降低 limits.min_ratio，并重新预处理。增大长度时同时核对训练 JSON、解码预算、模型位置上限与实际显存。缩小背景池过度可能造成背景窗口重复，应在论文记录池大小、每篇上限、源前缀和种子。

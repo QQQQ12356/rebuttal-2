@@ -2,6 +2,8 @@
 
 运行要求与原 SeCo 一致：Linux、Python 3.10/3.11、CUDA GPU。数据构建、指标重算、热力图与 NIAH CPU 测试可用 Linux CPU；真实模型生成使用 GPU。当前 Windows 不执行这些实验。
 
+[训练集评测](09_train_benchmark.md) 与留出评测共用推理环境。训练集预检只需要 Python 和本地预处理产物及 checkpoint 元数据，正式运行使用 CUDA。
+
 已有本工程环境时只需要补齐绘图依赖：
 
 ```bash

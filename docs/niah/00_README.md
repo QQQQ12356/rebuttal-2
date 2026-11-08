@@ -14,6 +14,7 @@
 | 06 | [测试、指标与绘图](06_benchmark_plot.md) | EM/F1、分片合并、单图多比例、PNG/PDF/CSV |
 | 07 | [脚本变量索引](07_parameters.md) | 每个 Shell 变量、参数优先级、修改位置 |
 | 08 | [验证与排错](08_validation.md) | 已做静态检查、待做 Linux 测试、smoke test |
+| 09 | [训练集评测](09_train_benchmark.md) | 显式开启、校验原训练数据、按来源与任务汇总 |
 
 ```text
 configs/niah/           sources.json、prepare_train.json、train.json、grid*.json
@@ -52,5 +53,7 @@ BENCHMARK_DIR=artifacts/niah/benchmarks/你的实际benchmark \
 ```
 
 默认训练目标：4,000 条 PG19 合成针 + 各 2,000 条 CogitoProbe-Bits/Bind，实际以筛选统计为准。默认测试为 4 个长度×11 个深度×5 个 trial=220 条，每个压缩比各测完整同一网格。默认四个比例共 880 个计分样本，另有不计分的预热生成。
+
+如果要诊断训练集表现，用训练时的 `PREPARED_DIR` 和对应 checkpoint 运行 `EVAL_TRAIN=1 bash scripts/niah/sh/51_benchmark_train.sh`。参数、预检和产物见 [09 训练集评测](09_train_benchmark.md)。
 
 最终 `figures/NIAH.png` 可在一张图中展示多个比例的热力图，另存矢量 PDF 和逐格 CSV。布局参考用户 `NIAH.png`；默认颜色表示 0–100% 的检索 EM 成功率，区别于参考图中的 GPT 1–10 主观评分。

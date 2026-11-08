@@ -26,6 +26,9 @@ bash scripts/niah/sh/10_download_data.sh --sources pg19_test
 
 # 只下载一个源到新 raw 版本。
 RAW_DIR=artifacts/niah/raw_v2 bash scripts/niah/sh/10_download_data.sh --sources cogito_bits
+
+# 计划用 SYNTHETIC_SAMPLES=0 构建纯 Cogito 训练集时，仍下载默认留出背景供去重。
+bash scripts/niah/sh/10_download_data.sh --sources cogito_bits cogito_bind paulgraham
 ```
 
 | Python 参数 | 默认 | 含义 |
@@ -38,6 +41,8 @@ RAW_DIR=artifacts/niah/raw_v2 bash scripts/niah/sh/10_download_data.sh --sources
 注册表字段：`kind=hf/github` 指下载方式；`role=haystack_train/haystack_test/supervised_train` 指用途；`revision` 可改 commit；HF 的 `config/split` 必须真实存在。训练用途强制 `split=train`。`fields` 仅保存所需文本和元数据，省去源数据大量不兼容 token IDs。默认 PG19 train 取前 64 篇，两个 Cogito 源扫描完整 train，Paul Graham 读取仓库该目录全部 `.txt`。
 
 每源生成 `<name>.jsonl` 和 `<name>.source.json`。后者含完整注册表项、解析后的 commit、行数和 SHA256。相同身份/哈希会复用；不同版本或不完整文件拒绝覆盖，换 RAW_DIR 重试。限行参数选的是源前缀，后续训练预处理才对合格候选均匀抽样；报告训练数据时应说明候选范围。
+
+已有 checkpoint 和对应的 prepared 产物时，[训练集评测](09_train_benchmark.md) 直接使用原训练产物，可跳过下载与预处理。
 
 ## 3. 镜像、本地文件与来源追溯
 

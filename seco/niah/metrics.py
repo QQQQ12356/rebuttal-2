@@ -13,6 +13,26 @@ def score_prediction(prediction: str, answers: list[str]) -> dict:
     return {"accuracy": em, "em": em, "f1": f1, "hit_rate": float(hit)}
 
 
+def aggregate_training(rows: list[dict]) -> dict:
+    """Summarize scored training rows without imposing a held-out grid shape."""
+    if not rows:
+        raise ValueError("No NIAH training predictions")
+    by_source, by_task = {}, {}
+    for row in rows:
+        by_source.setdefault(row["source"], []).append(row)
+        by_task.setdefault(row["task"], []).append(row)
+
+    def summarize(items):
+        return {"count": len(items),
+                **{metric: sum(row[metric] for row in items) / len(items)
+                   for metric in ("accuracy", "em", "f1", "hit_rate")}}
+
+    return {"format": "seco-niah-train-metrics-v1", "scale": "0-1", "split": "train", "count": len(rows),
+            "summary": summarize(rows),
+            "sources": {source: summarize(items) for source, items in sorted(by_source.items())},
+            "tasks": {task: summarize(items) for task, items in sorted(by_task.items())}}
+
+
 def aggregate(rows: list[dict], grid: dict, *, allow_incomplete: bool = False) -> dict:
     lengths, depths, repeats = grid["lengths"], grid["depths"], grid["repeats"]
     expected = {(length, depth, trial) for length in lengths for depth in depths for trial in range(repeats)}

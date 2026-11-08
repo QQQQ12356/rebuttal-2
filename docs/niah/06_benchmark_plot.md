@@ -2,6 +2,8 @@
 
 ## 1. 生成预测
 
+本节使用独立留出网格，`EVAL_TRAIN` 默认为 `0`。要在 checkpoint 自己的训练样本上评测，见 [09 训练集评测](09_train_benchmark.md)。
+
 先填写真实 checkpoint。可以使用 NIAH 训练后的 final/checkpoint-N、merged 模型，也可以使用本工程已有兼容 SeCo checkpoint 作为未做 NIAH 训练的对照。
 
 ```bash
@@ -36,6 +38,8 @@ plan-only 检查 checkpoint 元数据、grid 文件哈希、比例和生成预�
 | --plan-only | 关闭 | 不分配 CUDA 的计划检查 |
 
 设置 `MAX_TEST_SAMPLES=32` 可让每个压缩比最多评测 32 条。脚本按长度 × 深度格子轮流选取固定子集，所有压缩比复用同一批样本。子集指标会标记为不完整网格，绘图时传入 `--allow-incomplete`。
+
+用 `RATIOS='4 8'` 可从 Shell 指定固定压缩比列表。
 
 多卡测试为数据并行，每张卡仍需容纳完整双模型。训练 ZeRO-3 能放下不代表测试也能放下；长注意力和原始 SeCo 聚类仍可能耗时较长，先验证显存。
 
