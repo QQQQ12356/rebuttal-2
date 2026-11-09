@@ -53,6 +53,7 @@
 | `01` | `MODEL_ID`、`MODEL_PATH`、`REVISION` | 下载的 Hub ID、本地输出目录、请求的 Hub revision |
 | `10` | `SOURCES`、`RAW_DIR` | `configs/ruler_qa/sources.json`、`$RULER_QA_ROOT/raw` |
 | `20` | `SPLIT`、`PREPARE_CONFIG` | `train`（或 `test`）、`configs/ruler_qa/prepare.json` |
+| `20` | `PROMPT_STYLE` | `raw`（或 `legacy`）。对应 `--prompt-style`，详见 [03 数据预处理](03_preprocessing.md)。 |
 | `20` | `RAW_DIR`、`PREPARED_DIR`、`MODEL_PATH`、`REVISION` | 原始数据目录、新输出目录、本地快照或 Hub ID、Hub revision。输出默认是 `prepared/train_v1` 或 `prepared/test_v1` |
 | `30` | `CONFIG`、`PREPARED_DIR`、`MODEL_PATH` | 训练 JSON、训练数据目录、基座覆盖项。默认配置在本地快照存在时优先用本地快照 |
 | `30` | `CUDA_VISIBLE_DEVICES`、`NPROC_PER_NODE` | 默认 `0` 和 `1`。每 GPU 一个进程，进程数需匹配可见设备 |

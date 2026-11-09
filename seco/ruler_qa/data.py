@@ -14,7 +14,8 @@ TASKS = {
     "qa_1": {"train": "train-v2.0.json", "test": "dev-v2.0.json"},
     "qa_2": {"train": "hotpot_train_v1.1.json", "test": "hotpot_dev_distractor_v1.json"},
 }
-INTRO = "Use the documents below to answer the question. Give only the answer."
+PROMPT_STYLES = ("raw", "legacy")
+LEGACY_INTRO = "Use the documents below to answer the question. Give only the answer."
 
 
 @dataclass(frozen=True)
@@ -60,6 +61,8 @@ def sample_train(questions, *, blocked, limit, rng):
 
 
 def validate_settings(settings):
+    if settings.get("prompt_style", "raw") not in PROMPT_STYLES:
+        raise ValueError(f"prompt_style must be one of {PROMPT_STYLES}")
     for key in ("train_lengths", "test_lengths"):
         values = settings[key]
         if not values or any(type(n) is not int or n < 1 for n in values) or len(set(values)) != len(values):
@@ -86,14 +89,16 @@ def build_rows(questions, tokenizer, settings, *, task, split):
     rng = random.Random(f"{settings['seed']}:{split}:{task}")
     rng.shuffle(questions)
     encode = lru_cache(maxsize=8192)(lambda text: tokenizer.encode(text, add_special_tokens=False))
-    intro = encode(INTRO)
+    legacy_prompt = settings.get("prompt_style", "raw") == "legacy"
+    intro = encode(LEGACY_INTRO) if legacy_prompt else []
     lengths = settings[f"{split}_lengths"]
     limit = settings[f"{split}_samples_per_task"]
     rows, rejected, accepted_keys = [], Counter(), set()
 
     def build(question, target):
         test = split == "test"
-        prompt = encode(f"\n\nQuestion: {question.text}\nAnswer:")
+        prompt_text = f"\n\nQuestion: {question.text}\nAnswer:" if legacy_prompt else f"\n{question.text}"
+        prompt = encode(prompt_text)
         labels = encode(question.answers[0]) + [tokenizer.eos_token_id] if not test else []
         reserve = settings["generation_budget"] if test else len(labels)
         input_budget = target - reserve

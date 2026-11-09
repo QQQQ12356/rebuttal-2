@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 from ruler_bootstrap import require_linux
 from seco.data import tokenizer_fingerprint
 from seco.io import fingerprint, model_source, project_path, read_json, sha256_file, write_json, write_jsonl
-from seco.ruler_qa.data import TASKS, build_rows, read_questions, sample_train, validate_settings
+from seco.ruler_qa.data import PROMPT_STYLES, TASKS, build_rows, read_questions, sample_train, validate_settings
 
 
 def main():
@@ -20,8 +20,11 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--model", default="Qwen/Qwen3-4B-Instruct-2507")
     parser.add_argument("--revision", default="main")
+    parser.add_argument("--prompt-style", choices=PROMPT_STYLES, default="raw",
+                        help="raw: append the question only; legacy: add the instruction and QA markers")
     args = parser.parse_args()
     settings = read_json(project_path(args.config))
+    settings["prompt_style"] = args.prompt_style
     validate_settings(settings)
     output, raw = project_path(args.output), project_path(args.raw_dir)
     if output.exists():

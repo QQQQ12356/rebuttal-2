@@ -7,6 +7,38 @@ SPLIT=test bash scripts/ruler_qa/sh/20_prepare_data.sh
 
 默认用 `configs/ruler_qa/prepare.json`。可复制为新配置，通过 `PREPARE_CONFIG` 指定副本，通过 `PREPARED_DIR` 指定新目录。每次只生成一个 split。输出包含对应的 `train.jsonl` 或 `test.jsonl` 及 `manifest.json`，整组文件就绪后发布到目标路径。
 
+## 输入与提问后缀
+
+默认使用 `raw`。上下文由带 `Document:` 分隔标记的文档组成，开头省略英文作答指令。后缀只包含一个用于分隔的换行和原始问题。以下是最后一篇文档到输入末尾的示意。
+
+```text
+Document:
+[文档正文]
+Who first introduced social insurance programs?
+```
+
+预处理分别编码上下文和后缀，再拼成 `input_ids`。上下文的 `prompt_mask` 为 0，后缀的 mask 为 1。答案及 EOS 仍单独写入训练 `labels`。测试从问题末尾开始生成。
+
+| Bash 变量 | Python 参数 | 取值与修改方式 |
+| --- | --- | --- |
+| `PROMPT_STYLE` | `--prompt-style` | 默认 `raw`，使用上述后缀。设为 `legacy` 可复现此前 RULER QA 的英文指令和 `\n\nQuestion: {question}\nAnswer:` 后缀。 |
+| `SPLIT` | `--split` | `train` 或 `test`。每次生成一个数据划分。 |
+| `PREPARED_DIR` | `--output` | 指定一个尚不存在的目录，避免覆盖旧数据。 |
+| `PREPARE_CONFIG` | `--config` | 指定长度档位、样本数和 token 预算等配置。 |
+
+长期修改可编辑 `scripts/ruler_qa/sh/20_prepare_data.sh` 顶部的 `PROMPT_STYLE` 默认值。单次运行可在命令前设置同名环境变量，或在脚本名后追加 `--prompt-style raw`。同时指定时以末尾的 CLI 参数为准。实际格式写入 `manifest.json` 的 `arguments.prompt_style`。
+
+```bash
+SPLIT=train PROMPT_STYLE=raw PREPARED_DIR=artifacts/ruler_qa/prepared/train_raw \
+  bash scripts/ruler_qa/sh/20_prepare_data.sh
+SPLIT=test PROMPT_STYLE=raw PREPARED_DIR=artifacts/ruler_qa/prepared/test_raw \
+  bash scripts/ruler_qa/sh/20_prepare_data.sh
+```
+
+旧 JSONL 已存储 token IDs，修改格式参数后须重新预处理。训练时将 `PREPARED_DIR` 指向 `train_raw`，测试时将 `TEST_DIR` 指向 `test_raw`。若要评估新格式下训练和测试的完整流程，使用新训练数据训练，再用对应的新测试数据评测。与旧格式做对照时核对样本 ID，因为模板长度变化可能改变能装入预算的文档和入选问题。
+
+## 样本与预算
+
 | 阶段 | 样本与预算 |
 | --- | --- |
 | 训练 | 各任务最多先抽 4096 个训练候选，再选各 512 题。合格题轮流分到 4096 和 8192 预算，每题只出现在一个长度 |
