@@ -7,6 +7,34 @@ SPLIT=test bash scripts/ruler_qa/sh/20_prepare_data.sh
 
 默认用 `configs/ruler_qa/prepare.json`。可复制为新配置，通过 `PREPARE_CONFIG` 指定副本，通过 `PREPARED_DIR` 指定新目录。每次只生成一个 split。输出包含对应的 `train.jsonl` 或 `test.jsonl` 及 `manifest.json`，整组文件就绪后发布到目标路径。
 
+## 在脚本中调整预处理参数
+
+在 `scripts/ruler_qa/sh/20_prepare_data.sh` 顶部修改参数。留空时从 `PREPARE_CONFIG` 读取该项。比如把 `TRAIN_LENGTHS="${TRAIN_LENGTHS:-}"` 改为 `TRAIN_LENGTHS="${TRAIN_LENGTHS:-4096 8192}"`，即可在脚本中固定训练长度。长度列表用空格分隔。
+
+| Bash 变量 | Python 参数 | 默认配置与作用 |
+| --- | --- | --- |
+| `TRAIN_LENGTHS` | `--train-lengths` | `4096 8192`，训练 token 档位，每题只分到一个档位。 |
+| `TEST_LENGTHS` | `--test-lengths` | `4096 8192 16384 32768`，每道入选测试题覆盖全部档位。 |
+| `TRAIN_CANDIDATES_PER_TASK` | `--train-candidates-per-task` | `4096`，每任务候选池大小，至少等于该任务训练题量。 |
+| `TRAIN_SAMPLES_PER_TASK` | `--train-samples-per-task` | `512`，每任务接受的训练题量，至少覆盖所有训练档位。 |
+| `TEST_SAMPLES_PER_TASK` | `--test-samples-per-task` | `50`，每任务接受的测试题量，每题按测试档位数展开。 |
+| `MIN_FILL` | `--min-fill` | `0.85`，目标长度的最低填充比例，范围为 `(0, 1]`。 |
+| `MIN_RATIO` | `--min-ratio` | `4`，用于检查 decoder 预算的最低压缩比，至少为 1。 |
+| `MAX_DECODER_TOKENS` | `--max-decoder-tokens` | `16384`，压缩后上下文、提问后缀及答案或生成预留的总预算。 |
+| `MAX_ANSWER_TOKENS` | `--max-answer-tokens` | `64`，训练答案上限，包含 EOS。 |
+| `GENERATION_BUDGET` | `--generation-budget` | `32`，测试预留的生成 token 数。测试档位须大于该值。 |
+| `SEED` | `--seed` | `42`，控制问题抽样和文档选择、排列。 |
+
+从低到高的优先级依次是 JSON 配置、Bash 脚本中的默认值、运行时的环境变量、命令末尾追加的 CLI 参数。直接调用 Python 时，CLI 中显式填写的值覆盖 JSON 中对应的项。合并后的值写入 `manifest.json` 的 `arguments`。
+
+例如，在 Linux 上生成每任务 20 题的 4K/8K 测试集：
+
+```bash
+SPLIT=test TEST_LENGTHS='4096 8192' TEST_SAMPLES_PER_TASK=20 \
+  PREPARED_DIR=artifacts/ruler_qa/prepared/test_small \
+  bash scripts/ruler_qa/sh/20_prepare_data.sh
+```
+
 ## 输入与提问后缀
 
 默认使用 `raw`。上下文由带 `Document:` 分隔标记的文档组成，开头省略英文作答指令。后缀只包含一个用于分隔的换行和原始问题。以下是最后一篇文档到输入末尾的示意。

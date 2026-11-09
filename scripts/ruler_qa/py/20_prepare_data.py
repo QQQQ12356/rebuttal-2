@@ -22,8 +22,26 @@ def main():
     parser.add_argument("--revision", default="main")
     parser.add_argument("--prompt-style", choices=PROMPT_STYLES, default="raw",
                         help="raw: append the question only; legacy: add the instruction and QA markers")
+    overrides = parser.add_argument_group("optional overrides for --config")
+    overrides.add_argument("--train-lengths", type=int, nargs="+", help="Training token budgets")
+    overrides.add_argument("--test-lengths", type=int, nargs="+", help="Test token budgets")
+    overrides.add_argument("--train-candidates-per-task", type=int, help="Candidate pool size per training task")
+    overrides.add_argument("--train-samples-per-task", type=int, help="Accepted training questions per task")
+    overrides.add_argument("--test-samples-per-task", type=int, help="Accepted test questions per task")
+    overrides.add_argument("--min-fill", type=float, help="Minimum fraction of the target token budget")
+    overrides.add_argument("--min-ratio", type=float, help="Minimum compression ratio for decoder budget checks")
+    overrides.add_argument("--max-decoder-tokens", type=int, help="Maximum decoder sequence length")
+    overrides.add_argument("--max-answer-tokens", type=int, help="Training answer limit including EOS")
+    overrides.add_argument("--generation-budget", type=int, help="Tokens reserved for generation during test preparation")
+    overrides.add_argument("--seed", type=int, help="Seed for question and document selection")
     args = parser.parse_args()
     settings = read_json(project_path(args.config))
+    for key in ("train_lengths", "test_lengths", "train_candidates_per_task", "train_samples_per_task",
+                "test_samples_per_task", "min_fill", "min_ratio", "max_decoder_tokens",
+                "max_answer_tokens", "generation_budget", "seed"):
+        value = getattr(args, key)
+        if value is not None:
+            settings[key] = value
     settings["prompt_style"] = args.prompt_style
     validate_settings(settings)
     output, raw = project_path(args.output), project_path(args.raw_dir)
