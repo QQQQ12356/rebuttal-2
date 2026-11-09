@@ -25,7 +25,8 @@ def main():
     manifest = metadata["test_manifest"]
     identity = fingerprint(manifest)
     ratios = sorted(metadata["arguments"]["ratios"])
-    lengths = sorted(manifest["arguments"]["test_lengths"])
+    split = manifest.get("kind", "test")
+    lengths = sorted(manifest["arguments"][f"{split}_lengths"])
     expected = {(task, length) for task in TASKS for length in lengths}
     if "prepared_test_identity" in manifest:
         expected = {(task, int(length)) for task, counts in manifest["counts"].items() for length in counts}
@@ -68,7 +69,8 @@ def main():
                     writer.writerow({"ratio": ratio, **cell})
     metric_label = {"ruler_score": "RULER QA substring score", "em": "Exact match", "f1": "Token F1"}[args.metric]
     subset = " [SUBSET]" if "prepared_test_identity" in manifest else ""
-    fig.suptitle(f"SeCo · {metric_label}{subset}")
+    dataset_label = " [TRAIN]" if split == "train" else ""
+    fig.suptitle(f"SeCo · {metric_label}{dataset_label}{subset}")
     fig.colorbar(image, ax=list(axes[0]), label="Score (%)")
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output, dpi=args.dpi)

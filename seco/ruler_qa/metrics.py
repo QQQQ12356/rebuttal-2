@@ -22,11 +22,12 @@ def score_prediction(prediction, references):
 
 
 def validate_grid(rows, manifest):
+    split = manifest.get("kind", "test")
     groups = defaultdict(list)
     for row in rows:
-        expected_id = f"{row['task']}:test:{row['source_id']}:{row['target_length']}"
+        expected_id = f"{row['task']}:{split}:{row['source_id']}:{row['target_length']}"
         if row["id"] != expected_id:
-            raise ValueError(f"Test row identity does not match its task, source ID and length: {row['id']}")
+            raise ValueError(f"Grid row identity does not match its task, split, source ID and length: {row['id']}")
         groups[row["task"]].append(row)
     expected_tasks = set(manifest["counts"]) if "prepared_test_identity" in manifest else set(TASKS)
     if not expected_tasks or not expected_tasks.issubset(TASKS) or set(groups) != expected_tasks:
@@ -54,7 +55,8 @@ def aggregate(rows, manifest, ratio):
         return {"count": len(items), "empty_count": sum(row["empty"] for row in items),
                 **{metric: sum(row[metric] for row in items) / len(items) for metric in METRICS}}
 
-    return {"task": "ruler_qa", "ratio": ratio, "scale": "0-1", "test_identity": fingerprint(manifest),
+    return {"task": "ruler_qa", "ratio": ratio, "scale": "0-1", "split": manifest.get("kind", "test"),
+            "test_identity": fingerprint(manifest),
             "summary": averages(overall), "tasks": {task: averages(items) for task, items in tasks.items()},
             "cells": [{"task": task, "target_length": target, **averages(items)}
                       for (task, target), items in sorted(cells.items())]}

@@ -7,7 +7,7 @@ import os
 import time
 
 from ruler_bootstrap import require_linux
-from seco.data import Collator, limit_grid_rows, tokenizer_fingerprint
+from seco.data import Collator, length_reason, limit_grid_rows, tokenizer_fingerprint
 from seco.io import fingerprint, iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.progress import BatchProgress
 from seco.ruler_qa.metrics import aggregate, ratio_directory, score_prediction, validate_grid
@@ -19,6 +19,9 @@ def main():
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--model", help="Relocated base model for an adapter checkpoint")
     parser.add_argument("--test-dir", default="artifacts/ruler_qa/prepared/test_v1")
+    parser.add_argument("--eval-train", action="store_true", help="Evaluate the checkpoint's training split")
+    parser.add_argument("--prepared-dir", default="artifacts/ruler_qa/prepared/train_v1",
+                        help="Prepared training directory used with --eval-train")
     parser.add_argument("--output", required=True)
     parser.add_argument("--ratios", nargs="+", type=float, default=[4, 8, 16, 32])
     parser.add_argument("--max-test-samples", type=int, help="Cap the total number of test samples per ratio")
@@ -40,33 +43,42 @@ def main():
     if not math.isfinite(args.repetition_penalty) or args.repetition_penalty <= 0:
         parser.error("Repetition penalty must be finite and positive")
 
-    test, checkpoint, output = map(project_path, (args.test_dir, args.checkpoint, args.output))
+    split = "train" if args.eval_train else "test"
+    dataset = project_path(args.prepared_dir if args.eval_train else args.test_dir)
+    checkpoint, output = map(project_path, (args.checkpoint, args.output))
     rank, world = int(os.getenv("RANK", "0")), int(os.getenv("WORLD_SIZE", "1"))
     if rank == 0 and output.exists():
         raise FileExistsError(f"Choose a new benchmark directory: {output}")
-    manifest = read_json(test / "manifest.json")
-    if manifest.get("format") != "seco-ruler-qa-test-v1" or manifest.get("kind") != "test":
-        raise ValueError("Expected a prepared RULER QA test grid")
-    if sha256_file(test / "test.jsonl") != manifest["files"]["test.jsonl"]:
-        raise ValueError("Test data hash mismatch")
+    manifest_path = dataset / "manifest.json"
+    manifest = read_json(manifest_path)
+    data_format = "seco-data-v1" if args.eval_train else "seco-ruler-qa-test-v1"
+    if (manifest.get("format"), manifest.get("task"), manifest.get("kind")) != (data_format, "ruler_qa", split):
+        raise ValueError(f"Expected prepared RULER QA {split} data")
+    data_path = dataset / f"{split}.jsonl"
+    if sha256_file(data_path) != manifest["files"][data_path.name]:
+        raise ValueError(f"{split} data hash mismatch")
     settings = manifest["arguments"]
     if min(args.ratios) < settings["min_ratio"] or args.max_new_tokens > settings["generation_budget"]:
-        raise ValueError("Ratio or generation limit is outside the prepared test budget")
+        raise ValueError("Ratio or generation limit is outside the prepared evaluation budget")
     experiment = read_json(checkpoint / "experiment.json")
     if experiment.get("format") != "seco-adapters-v1":
         raise ValueError("Unsupported SeCo checkpoint format")
     if experiment["tokenizer_fingerprint"] != manifest["tokenizer_fingerprint"]:
-        raise ValueError("Test and checkpoint tokenizer fingerprints differ")
+        raise ValueError("Prepared data and checkpoint tokenizer fingerprints differ")
+    if args.eval_train and (experiment.get("task") != "ruler_qa"
+                            or experiment.get("data_manifest_sha256") != sha256_file(manifest_path)):
+        raise ValueError("Checkpoint and --prepared-dir must refer to the same RULER QA training manifest")
     identity = checkpoint / ("artifact.json" if (checkpoint / "artifact.json").is_file() else "model.safetensors")
     if not identity.is_file():
         raise FileNotFoundError(identity)
-    rows = list(iter_jsonl(test / "test.jsonl"))
+    rows = list(iter_jsonl(data_path))
     validate_grid(rows, manifest)
-    training_keys = set(experiment.get("ruler_qa_training_question_keys", []))
-    if experiment.get("task") == "ruler_qa" and not training_keys:
-        raise ValueError("RULER QA checkpoint lacks training question identity")
-    if any(row["question_key"] in training_keys for row in rows):
-        raise ValueError("Test questions overlap the checkpoint's RULER QA training set")
+    if not args.eval_train:
+        training_keys = set(experiment.get("ruler_qa_training_question_keys", []))
+        if experiment.get("task") == "ruler_qa" and not training_keys:
+            raise ValueError("RULER QA checkpoint lacks training question identity")
+        if any(row["question_key"] in training_keys for row in rows):
+            raise ValueError("Test questions overlap the checkpoint's RULER QA training set")
     prepared_count = len(rows)
     rows = limit_grid_rows(rows, args.max_test_samples, cell_keys=("task", "target_length"))
     if len(rows) < prepared_count:
@@ -76,8 +88,17 @@ def main():
             ids[row["task"]].append(row["id"])
         manifest = {**manifest, "prepared_test_identity": fingerprint(manifest), "counts": dict(counts),
                     "sample_id_hashes": {task: fingerprint(sorted(task_ids)) for task, task_ids in ids.items()}}
+    if args.eval_train:
+        for row in rows:
+            reason = length_reason(
+                {**row, "answer_tokens": args.max_new_tokens},
+                max_input_tokens=settings["max_input_tokens"], max_answer_tokens=settings["generation_budget"],
+                max_decoder_tokens=settings["max_decoder_tokens"], min_ratio=min(args.ratios), min_context_tokens=1,
+            )
+            if reason:
+                raise ValueError(f"{row['id']}: {reason} for generation; check --max-new-tokens and --ratios")
     if args.plan_only:
-        print(json.dumps({"counts": manifest["counts"], "ratios": args.ratios, "world_size": world,
+        print(json.dumps({"split": split, "counts": manifest["counts"], "ratios": args.ratios, "world_size": world,
                           "prepared_test_samples": prepared_count, "test_samples": len(rows),
                           "generation_examples": len(rows) * len(args.ratios)}, indent=2))
         return
@@ -95,7 +116,7 @@ def main():
         dist.init_process_group("nccl")
     model, _ = load_checkpoint_model(checkpoint, model_path=args.model, attention=args.attention)
     if tokenizer_fingerprint(model.tokenizer) != manifest["tokenizer_fingerprint"]:
-        raise ValueError("Loaded model tokenizer differs from the prepared test tokenizer")
+        raise ValueError("Loaded model tokenizer differs from the prepared data tokenizer")
     if max(settings["max_input_tokens"], settings["max_decoder_tokens"]) > model.config.max_position_embeddings:
         raise ValueError("Prepared token limits exceed the loaded model position limit")
     model.to(device).eval()
@@ -104,7 +125,8 @@ def main():
     if rank == 0:
         output.mkdir(parents=True, exist_ok=False)
         write_json(output / "benchmark.json", {
-            "task": "ruler_qa", "arguments": vars(args), "experiment": experiment, "test_manifest": manifest,
+            "task": "ruler_qa", "split": split, "arguments": vars(args), "experiment": experiment,
+            "test_manifest": manifest,
             "checkpoint_identity": sha256_file(identity), "world_size": world,
             "gpu": torch.cuda.get_device_name(device), "attention": model.model_config["attn_implementation"],
             "timing": "amortized generation seconds per sample, including encoder and compression",

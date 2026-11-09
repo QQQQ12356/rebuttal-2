@@ -61,9 +61,12 @@
 | `30` | `RESUME`、`MAX_STEPS`、`PLAN_ONLY` | 可续训检查点、累计步上限、预检开关 `0/1` |
 | `40` | `CHECKPOINT`、`MERGED_DIR`、`MERGE_DEVICE`、`MODEL_PATH` | 输入适配器、合并输出（默认原路径加 `_merged`）、`cpu` 或 `cuda`、可选迁移后的同版本基座 |
 | `50` | `CHECKPOINT`、`TEST_DIR`、`OUTPUT_DIR`、`MODEL_PATH` | 必填模型目录、测试网格、新评测目录、可选迁移后的同版本基座 |
+| `50` | `EVAL_TRAIN`、`PREPARED_DIR` | 默认 `0`。设为 `1` 评测训练集，训练目录默认 `$RULER_QA_ROOT/prepared/train_v1`，详见 [08 训练集评测](08_train_benchmark.md) |
+| `50` | `MAX_TEST_SAMPLES` | 默认留空使用全量。设置正整数可限制每个压缩比的总行数，适用于训练集和独立测试集 |
 | `50` | `CUDA_VISIBLE_DEVICES`、`NPROC_PER_NODE` | 默认 `0` 和 `1`。测试脚本在单节点按 GPU 分片 |
 | `50` | `RATIOS`、`BATCH_SIZE`、`WORKERS` | 空格分隔的 `4 8 16 32`、单卡 batch `1`、加载进程 `2` |
 | `50` | `WARMUP_BATCHES`、`MAX_NEW_TOKENS`、`PLAN_ONLY` | 每卡每个压缩比预热 `1` 次、最多生成 `32` token、预检开关 `0/1` |
+| `50` | `REPETITION_PENALTY`、`ATTENTION`、`NO_MERGE` | 默认重复惩罚 `1.0`，注意力后端沿用 checkpoint，默认合并 LoRA 后推理。设 `NO_MERGE=1` 保留 LoRA 模块 |
 | `60` | `PREDICTIONS` | 必填，指向某一压缩比的完整 `predictions.jsonl` |
 | `70` | `BENCHMARK_DIR`、`METRIC`、`FIGURE_PATH`、`DPI` | 必填评测目录，默认 `ruler_score`、目录下的 `ruler_qa_heatmap.png`、`300` DPI |
 

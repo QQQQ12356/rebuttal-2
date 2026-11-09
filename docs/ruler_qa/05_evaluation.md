@@ -11,6 +11,8 @@ BENCHMARK_DIR="$OUTPUT_DIR" bash scripts/ruler_qa/sh/70_plot_heatmap.sh
 
 设置 `MAX_TEST_SAMPLES=32`（Python 参数 `--max-test-samples 32`）可让每个压缩比最多评测 32 条。脚本按任务 × 长度格子轮流选取固定子集，所有压缩比复用同一批样本。默认评测全量。子集热力图将未采样的格子显示为 `NA`。
 
+设置 `EVAL_TRAIN=1` 可改用 checkpoint 对应的训练集，样本上限用法相同。路径设置、预检与输出说明见 [08 训练集评测](08_train_benchmark.md)。
+
 ```bash
 CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2   CHECKPOINT="$RUN_DIR/final_merged"   OUTPUT_DIR=artifacts/ruler_qa/benchmarks/qa_merged_v1   bash scripts/ruler_qa/sh/50_benchmark.sh
 ```
