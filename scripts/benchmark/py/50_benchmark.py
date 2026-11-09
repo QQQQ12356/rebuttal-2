@@ -1,4 +1,4 @@
-"""Batched deterministic generation with disjoint GPU shards and EM/F1 results."""
+"""Batched generation with disjoint GPU shards and EM/F1 results."""
 import argparse
 import math
 import os
@@ -7,6 +7,7 @@ import time
 
 from _bootstrap import require_linux
 from seco.data import BENCHMARKS, Collator, tokenizer_fingerprint
+from seco.generation import add_generation_arguments, generation_options
 from seco.io import iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.metrics import score_answer, summarize
 from seco.progress import BatchProgress, log_progress
@@ -29,7 +30,7 @@ def main():
     parser.add_argument("--warmup-batches", type=int, default=1)
     parser.add_argument("--qa-max-new-tokens", type=int, default=64)
     parser.add_argument("--news-max-new-tokens", type=int, default=512)
-    parser.add_argument("--repetition-penalty", type=float, default=1.0)
+    add_generation_arguments(parser)
     parser.add_argument("--attention", choices=("eager", "sdpa", "flash_attention_2"))
     parser.add_argument("--no-merge", action="store_true", help="Keep LoRA modules active for equivalence comparisons")
     parser.add_argument("--include-context", action="store_true", help="Include source context in prediction JSONL/Excel details")
@@ -38,8 +39,9 @@ def main():
         parser.error("Ratios must be finite and >= 1")
     if args.batch_size < 1 or min(args.samples, args.workers, args.warmup_batches) < 0:
         parser.error("Invalid batch size, samples, workers or warmup")
-    if min(args.qa_max_new_tokens, args.news_max_new_tokens) < 1 or args.repetition_penalty <= 0:
-        parser.error("Generation limits and repetition penalty must be positive")
+    limits = {name: args.news_max_new_tokens if name == "multinews" else args.qa_max_new_tokens
+              for name in args.datasets}
+    decoding = {name: generation_options(parser, args, limit) for name, limit in limits.items()}
     if len(set(args.ratios)) != len(args.ratios) or len(set(args.datasets)) != len(args.datasets):
         parser.error("Duplicate ratios/datasets would duplicate predictions")
     import torch
@@ -66,8 +68,7 @@ def main():
     manifest = read_json(prepared / "manifest.json")
     if min(args.ratios) < manifest["arguments"]["min_ratio"]:
         raise ValueError("Evaluation ratio is below preprocessing --min-ratio; preprocess again")
-    requested_budget = max(args.news_max_new_tokens if name == "multinews" else args.qa_max_new_tokens
-                           for name in args.datasets)
+    requested_budget = max(limits.values())
     if requested_budget > manifest["arguments"]["test_generation_budget"]:
         raise ValueError("Generation exceeds preprocessing test generation budget; preprocess again")
     log_progress(f"{worker_label} loading checkpoint {source}")
@@ -115,7 +116,7 @@ def main():
             rows = sorted((row for row in shard if row["dataset"] == name), key=lambda row: len(row["input_ids"]))
             if not rows:
                 continue
-            max_new = args.news_max_new_tokens if name == "multinews" else args.qa_max_new_tokens
+            max_new = limits[name]
             for row in rows:
                 centers = min(row["context_tokens"], max(2, math.ceil(row["context_tokens"] / ratio)))
                 if len(row["input_ids"]) > model.config.max_position_embeddings or centers + row["prompt_tokens"] + max_new > model.config.max_position_embeddings:
@@ -123,9 +124,7 @@ def main():
             progress = BatchProgress(f"{label} dataset={name}", len(rows))
             loader = DataLoader(rows, batch_size=args.batch_size, collate_fn=collator,
                                 num_workers=args.workers, pin_memory=True, shuffle=False)
-            generation = {"max_new_tokens": max_new, "do_sample": False,
-                          "repetition_penalty": args.repetition_penalty,
-                          "output_scores": False, "return_dict_in_generate": False}
+            generation = decoding[name]
             offset = 0
             for batch_number, batch in enumerate(loader):
                 batch = {key: value.to(device, non_blocking=True) for key, value in batch.items()}

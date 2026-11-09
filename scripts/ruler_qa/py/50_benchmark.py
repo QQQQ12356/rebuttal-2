@@ -8,6 +8,7 @@ import time
 
 from ruler_bootstrap import require_linux
 from seco.data import Collator, length_reason, limit_grid_rows, tokenizer_fingerprint
+from seco.generation import add_generation_arguments, generation_options
 from seco.io import fingerprint, iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.progress import BatchProgress
 from seco.ruler_qa.metrics import aggregate, ratio_directory, score_prediction, validate_grid
@@ -29,19 +30,19 @@ def main():
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--warmup-batches", type=int, default=1)
     parser.add_argument("--max-new-tokens", type=int, default=32)
-    parser.add_argument("--repetition-penalty", type=float, default=1.0)
+    add_generation_arguments(parser)
     parser.add_argument("--attention", choices=("eager", "sdpa", "flash_attention_2"))
     parser.add_argument("--no-merge", action="store_true")
     parser.add_argument("--plan-only", action="store_true")
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
+    generation = generation_options(parser, args, args.max_new_tokens)
     if args.max_test_samples is not None and args.max_test_samples < 1:
         parser.error("--max-test-samples must be positive")
     if len(set(args.ratios)) != len(args.ratios) or any(not math.isfinite(r) or r < 1 for r in args.ratios):
         parser.error("Ratios must be distinct finite numbers >= 1")
-    if min(args.batch_size, args.max_new_tokens) < 1 or min(args.workers, args.warmup_batches) < 0:
+    if args.batch_size < 1 or min(args.workers, args.warmup_batches) < 0:
         parser.error("Invalid batch or generation options")
-    if not math.isfinite(args.repetition_penalty) or args.repetition_penalty <= 0:
-        parser.error("Repetition penalty must be finite and positive")
 
     split = "train" if args.eval_train else "test"
     dataset = project_path(args.prepared_dir if args.eval_train else args.test_dir)
@@ -106,12 +107,14 @@ def main():
     import torch
     import torch.distributed as dist
     from torch.utils.data import DataLoader
+    from transformers import set_seed
     from seco.model import load_checkpoint_model
 
     if not torch.cuda.is_available():
         raise RuntimeError("RULER QA generation requires a visible CUDA GPU")
     device = torch.device("cuda", int(os.getenv("LOCAL_RANK", "0")))
     torch.cuda.set_device(device)
+    set_seed(args.seed + rank)
     if world > 1:
         dist.init_process_group("nccl")
     model, _ = load_checkpoint_model(checkpoint, model_path=args.model, attention=args.attention)
@@ -138,8 +141,6 @@ def main():
     shard = sorted(rows[rank::world], key=lambda row: len(row["input_ids"]))
     loader = DataLoader(shard, batch_size=args.batch_size, num_workers=args.workers, pin_memory=True,
                         collate_fn=Collator(model.tokenizer.pad_token_id, training=False))
-    generation = {"max_new_tokens": args.max_new_tokens, "do_sample": False, "num_beams": 1,
-                  "repetition_penalty": args.repetition_penalty, "return_dict_in_generate": False, "output_scores": False}
     for ratio in args.ratios:
         directory = output / ratio_directory(ratio)
         progress = BatchProgress(f"[ruler_qa rank={rank} R={ratio:g}]", len(shard))

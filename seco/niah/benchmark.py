@@ -6,6 +6,7 @@ import os
 import time
 
 from seco.data import Collator, limit_grid_rows, tokenizer_fingerprint
+from seco.generation import add_generation_arguments, generation_options
 from seco.io import fingerprint, iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.niah.metrics import aggregate, aggregate_training, score_prediction
 from seco.niah.train_eval import load_training_rows
@@ -27,11 +28,13 @@ def main(*, train_only=False):
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--warmup-batches", type=int, default=1)
     parser.add_argument("--max-new-tokens", type=int, default=64)
-    parser.add_argument("--repetition-penalty", type=float, default=1.0)
+    add_generation_arguments(parser)
     parser.add_argument("--attention", choices=("eager", "sdpa", "flash_attention_2"))
     parser.add_argument("--no-merge", action="store_true")
     parser.add_argument("--plan-only", action="store_true", help="Verify inputs and report workload without importing torch")
+    parser.add_argument("--seed", type=int, help="Generation seed override (defaults to the dataset seed)")
     args = parser.parse_args()
+    generation = generation_options(parser, args, args.max_new_tokens)
     if train_only and not args.eval_train:
         parser.error("Training-set evaluation requires --eval-train")
     if (args.eval_train and args.grid_dir) or (not args.eval_train and args.prepared_dir):
@@ -40,8 +43,7 @@ def main(*, train_only=False):
         parser.error("--max-test-samples must be positive")
     if len(set(args.ratios)) != len(args.ratios) or not args.ratios or any(not math.isfinite(r) or r < 1 for r in args.ratios):
         parser.error("ratios must be distinct finite numbers >= 1")
-    if (min(args.batch_size, args.max_new_tokens) < 1 or min(args.workers, args.warmup_batches) < 0
-            or not math.isfinite(args.repetition_penalty) or args.repetition_penalty <= 0):
+    if args.batch_size < 1 or min(args.workers, args.warmup_batches) < 0:
         parser.error("Invalid batch/generation options")
     source, output = project_path(args.checkpoint), project_path(args.output)
     if output.exists():
@@ -101,7 +103,7 @@ def main(*, train_only=False):
         output.mkdir(parents=True, exist_ok=False)
     if world > 1:
         dist.barrier()
-    set_seed(seed + rank)
+    set_seed((seed if args.seed is None else args.seed) + rank)
     log_progress(f"{worker_label} loading checkpoint {source}")
     model, experiment = load_checkpoint_model(source, model_path=args.model, attention=args.attention)
     if tokenizer_fingerprint(model.tokenizer) != manifest["tokenizer_fingerprint"]:
@@ -138,9 +140,6 @@ def main(*, train_only=False):
     shard = sorted(rows[rank::world], key=lambda row: len(row["input_ids"]))
     del rows
     collator = Collator(model.tokenizer.pad_token_id, training=False)
-    generation = {"max_new_tokens": args.max_new_tokens, "do_sample": False,
-                  "repetition_penalty": args.repetition_penalty,
-                  "return_dict_in_generate": False, "output_scores": False}
     for ratio_index, ratio in enumerate(args.ratios, start=1):
         label = f"{worker_label} R={ratio:g} ({ratio_index}/{len(args.ratios)})"
         progress = BatchProgress(label, len(shard))
