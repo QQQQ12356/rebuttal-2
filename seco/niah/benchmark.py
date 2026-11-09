@@ -27,7 +27,7 @@ def main(*, train_only=False):
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--warmup-batches", type=int, default=1)
-    parser.add_argument("--max-new-tokens", type=int, default=64)
+    parser.add_argument("--max-new-tokens", type=int, default=64, help="Generation cap within the prepared budget (default: 64)")
     add_generation_arguments(parser)
     parser.add_argument("--attention", choices=("eager", "sdpa", "flash_attention_2"))
     parser.add_argument("--no-merge", action="store_true")
@@ -103,7 +103,7 @@ def main(*, train_only=False):
         output.mkdir(parents=True, exist_ok=False)
     if world > 1:
         dist.barrier()
-    set_seed((seed if args.seed is None else args.seed) + rank)
+    generation_seed = seed if args.seed is None else args.seed
     log_progress(f"{worker_label} loading checkpoint {source}")
     model, experiment = load_checkpoint_model(source, model_path=args.model, attention=args.attention)
     if tokenizer_fingerprint(model.tokenizer) != manifest["tokenizer_fingerprint"]:
@@ -133,7 +133,7 @@ def main(*, train_only=False):
         dataset_metadata = {"grid_manifest": manifest, "sample_selection": selection, **metric_identity}
     if rank == 0:
         write_json(output / "benchmark.json", {"task": "niah", "split": split, "arguments": vars(args),
-                   "experiment": experiment, **dataset_metadata,
+                   "generation": generation, "generation_seed": generation_seed,
                    "checkpoint_identity": sha256_file(checkpoint_file), "world_size": world,
                    "gpu": torch.cuda.get_device_name(device), "attention": model.model_config["attn_implementation"],
                    "timing": "amortized batch seconds per example; encoder+compression+decoder, excluding H2D/loading"})

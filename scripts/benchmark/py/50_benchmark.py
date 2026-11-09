@@ -28,8 +28,8 @@ def main():
     parser.add_argument("--shuffle", action="store_true")
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--warmup-batches", type=int, default=1)
-    parser.add_argument("--qa-max-new-tokens", type=int, default=64)
-    parser.add_argument("--news-max-new-tokens", type=int, default=512)
+    parser.add_argument("--qa-max-new-tokens", type=int, default=64, help="QA generation cap (default: 64)")
+    parser.add_argument("--news-max-new-tokens", type=int, default=512, help="MultiNews generation cap (default: 512)")
     add_generation_arguments(parser)
     parser.add_argument("--attention", choices=("eager", "sdpa", "flash_attention_2"))
     parser.add_argument("--no-merge", action="store_true", help="Keep LoRA modules active for equivalence comparisons")
@@ -96,7 +96,7 @@ def main():
     if rank == 0:
         identity_file = "artifact.json" if (source / "artifact.json").exists() else "model.safetensors"
         write_json(output / "benchmark.json", {"arguments": vars(args), "experiment": experiment,
-                   "checkpoint_identity": sha256_file(source / identity_file),
+                   "generation_by_dataset": decoding,
                    "data_manifest_sha256": sha256_file(prepared / "manifest.json"),
                    "samples": len(selected), "world_size": world, "gpu": torch.cuda.get_device_name(device),
                    "torch": torch.__version__, "attention": model.model_config["attn_implementation"],

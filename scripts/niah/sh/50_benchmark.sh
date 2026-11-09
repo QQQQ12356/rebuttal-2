@@ -13,7 +13,14 @@ BATCH_SIZE="${BATCH_SIZE:-1}"
 WORKERS="${WORKERS:-2}"
 WARMUP_BATCHES="${WARMUP_BATCHES:-1}"
 MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-64}"                     # Must fit the selected data's decoder budget.
-REPETITION_PENALTY="${REPETITION_PENALTY:-1.0}"
+DECODING="${DECODING:-greedy}"                            # greedy | sample | beam.
+TEMPERATURE="${TEMPERATURE:-}"                            # sample only; empty uses 1.0.
+TOP_P="${TOP_P:-}"                                        # sample only; empty uses 1.0.
+TOP_K="${TOP_K:-}"                                        # sample only; empty uses 0 (disabled).
+NUM_BEAMS="${NUM_BEAMS:-}"                                # beam only; empty uses 4.
+MIN_NEW_TOKENS="${MIN_NEW_TOKENS:-0}"                     # Suppress EOS before this many new tokens.
+REPETITION_PENALTY="${REPETITION_PENALTY:-1.0}"           # 1.0 disables the repetition penalty.
+SEED="${SEED:-}"                                          # Empty uses the prepared dataset seed.
 MAX_TEST_SAMPLES="${MAX_TEST_SAMPLES:-}"
 PLAN_ONLY="${PLAN_ONLY:-0}"
 
@@ -36,10 +43,18 @@ case "$EVAL_TRAIN" in
         ;;
 esac
 OUTPUT_DIR="${OUTPUT_DIR:-$NIAH_ROOT/benchmarks/${run_prefix}_$(timestamp)_${RANDOM}}"
+generation_options=(--decoding "$DECODING" --min-new-tokens "$MIN_NEW_TOKENS"
+                    --repetition-penalty "$REPETITION_PENALTY")
+[[ -n "$TEMPERATURE" ]] && generation_options+=(--temperature "$TEMPERATURE")
+[[ -n "$TOP_P" ]] && generation_options+=(--top-p "$TOP_P")
+[[ -n "$TOP_K" ]] && generation_options+=(--top-k "$TOP_K")
+[[ -n "$NUM_BEAMS" ]] && generation_options+=(--num-beams "$NUM_BEAMS")
+[[ -n "$SEED" ]] && generation_options+=(--seed "$SEED")
+
 options=(--checkpoint "$CHECKPOINT" "${dataset_options[@]}" --output "$OUTPUT_DIR"
          --ratios "${ratios[@]}" --batch-size "$BATCH_SIZE" --workers "$WORKERS"
          --warmup-batches "$WARMUP_BATCHES" --max-new-tokens "$MAX_NEW_TOKENS"
-         --repetition-penalty "$REPETITION_PENALTY")
+         "${generation_options[@]}")
 [[ -n "$MAX_TEST_SAMPLES" ]] && options+=(--max-test-samples "$MAX_TEST_SAMPLES")
 if [[ "$PLAN_ONLY" == 1 ]]; then
     WORLD_SIZE="$NPROC_PER_NODE" "$PYTHON_BIN" "$entry" "${options[@]}" --plan-only "$@"

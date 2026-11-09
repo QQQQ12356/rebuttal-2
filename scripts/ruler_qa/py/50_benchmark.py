@@ -29,7 +29,7 @@ def main():
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--warmup-batches", type=int, default=1)
-    parser.add_argument("--max-new-tokens", type=int, default=32)
+    parser.add_argument("--max-new-tokens", type=int, default=32, help="Generation cap within the prepared budget (default: 32)")
     add_generation_arguments(parser)
     parser.add_argument("--attention", choices=("eager", "sdpa", "flash_attention_2"))
     parser.add_argument("--no-merge", action="store_true")
@@ -129,7 +129,7 @@ def main():
         output.mkdir(parents=True, exist_ok=False)
         write_json(output / "benchmark.json", {
             "task": "ruler_qa", "split": split, "arguments": vars(args), "experiment": experiment,
-            "test_manifest": manifest,
+            "generation": generation, "test_manifest": manifest,
             "checkpoint_identity": sha256_file(identity), "world_size": world,
             "gpu": torch.cuda.get_device_name(device), "attention": model.model_config["attn_implementation"],
             "timing": "amortized generation seconds per sample, including encoder and compression",

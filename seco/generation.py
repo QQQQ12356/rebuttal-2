@@ -4,13 +4,13 @@ import math
 
 
 def add_generation_arguments(parser):
-    parser.add_argument("--decoding", choices=("greedy", "sample", "beam"), default="greedy")
+    parser.add_argument("--decoding", choices=("greedy", "sample", "beam"), default="greedy",
     parser.add_argument("--temperature", type=float, help="Sampling temperature (default: 1.0)")
     parser.add_argument("--top-p", type=float, help="Sampling nucleus cutoff (default: 1.0)")
     parser.add_argument("--top-k", type=int, help="Sampling vocabulary cutoff (default: 0, disabled)")
     parser.add_argument("--num-beams", type=int, help="Beam width (beam mode only, default: 4)")
     parser.add_argument("--min-new-tokens", type=int, default=0, help="Suppress EOS until this many tokens")
-    parser.add_argument("--repetition-penalty", type=float, default=1.0)
+    parser.add_argument("--repetition-penalty", type=float, default=1.0, help="Repetition penalty (default: 1.0)")
 
 
 def generation_options(parser, args, max_new_tokens):

@@ -1,5 +1,7 @@
 # 06 NIAH 测试、指标与热力图
 
+贪心、采样、beam search 及脚本变量的完整说明见 [01 评测解码配置](../01_decoding.md)。
+
 ## 1. 生成预测
 
 本节使用独立留出网格，`EVAL_TRAIN` 默认为 `0`。要在 checkpoint 自己的训练样本上评测，见 [09 训练集评测](09_train_benchmark.md)。
@@ -32,7 +34,7 @@ plan-only 检查 checkpoint 元数据、grid 文件哈希、比例和生成预�
 | --batch-size / --workers | 1 / 2 | 每卡 batch 与数据加载 worker |
 | --warmup-batches | 1 | 重复首 batch 预热次数，0 关闭 |
 | --max-new-tokens | 64 | 不得超过 grid.generation_budget |
-| --repetition-penalty | 1.0 | greedy 解码的重复惩罚；对照统一 |
+| --repetition-penalty | 1.0 | 生成时的重复惩罚，1.0 为中性值 |
 | --attention | checkpoint 值 | 可选 eager/sdpa/flash_attention_2 |
 | --no-merge | 关闭 | adapter 原样运行，用于合并前后比较 |
 | --plan-only | 关闭 | 不分配 CUDA 的计划检查 |

@@ -1,5 +1,7 @@
 # 05 测试、评分与绘图
 
+贪心、采样、beam search 及脚本变量的完整说明见 [01 评测解码配置](../01_decoding.md)。
+
 ```bash
 export OUTPUT_DIR=artifacts/ruler_qa/benchmarks/qa_main_v1
 CHECKPOINT="$RUN_DIR/final" PLAN_ONLY=1 bash scripts/ruler_qa/sh/50_benchmark.sh

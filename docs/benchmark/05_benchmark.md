@@ -1,5 +1,7 @@
 # 05 模型合并、推理与 EM/F1
 
+贪心、采样、beam search 及脚本变量的完整说明见 [01 评测解码配置](../01_decoding.md)。
+
 ## 1. 合并并持久保存
 
 ```bash
@@ -55,7 +57,7 @@ python -m torch.distributed.run --standalone --nproc_per_node 1 scripts/benchmar
 | --no-merge | 关闭 | adapter 原样运行；用于合并前后等价性检查 |
 | --include-context | 关闭 | prediction 文件保存完整 context，方便导入 Excel；增大磁盘占用 |
 
-默认 greedy、use_cache=true，不强行启用 temperature/top-p。生成长度超过 preprocessing generation budget 时拒绝运行，避免预算不一致。不同任务分开配置 max_new_tokens，不把 `test_fast` 的固定 10-token 限制带入摘要任务。
+默认使用贪心解码并启用 KV cache。生成长度超过 preprocessing generation budget 时拒绝运行，避免预算不一致。不同任务分开配置 max_new_tokens，不把 `test_fast` 的固定 10-token 限制带入摘要任务。
 
 ## 4. 产物与指标
 
