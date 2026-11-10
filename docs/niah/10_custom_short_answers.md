@@ -5,10 +5,10 @@
 | 字段 | 示例 | 用途 |
 | --- | --- | --- |
 | 问题 | Which place does the harbor visitor center recommend visiting after lunch? | 以 `Question: <问题>` 放在长文本末尾，指定推荐机构与时间 |
-| 针 | The harbor visitor center recommends visiting the maritime museum after lunch. | 完整事实句，插入背景的目标位置 |
-| 答案 | the maritime museum | 针中的连续地点短语，作为训练标签和评测参考答案 |
+| 针 | The harbor visitor center recommends visiting the harborfront maritime museum after lunch. | 完整事实句，插入背景的目标位置 |
+| 答案 | the harborfront maritime museum | 针中的连续地点短语，作为训练标签和评测参考答案 |
 
-输入组装、插针深度和长度定义见 [05 评测网格](05_prepare_grid.md)。训练与评测共享句式。机构和时间由种子抽取，地点从各自的词表中抽取。默认两个地点词表没有交集，每个词表包含 8 个短语。地点可在同一集合中重复，适合用同一规律构造多条检索样本。扩大事实覆盖时，直接编辑 `seco/niah/data.py` 的 `CUSTOM_DESTINATIONS`，保持两份词表互斥，优先用在背景中较少出现的完整地点短语。修改问题时只提供定位线索，保留答案在针中的连续原文。
+输入组装、插针深度和长度定义见 [05 评测网格](05_prepare_grid.md)。训练与评测共享句式。机构和时间由种子抽取，地点从各自的词表中抽取。训练和评测各有 100 个候选答案，由 10 个地区描述与各自的 10 个场所类型组合而成。两份场所类型列表互斥，因此完整答案也没有交集。地点可在同一集合中重复，适合用同一规律构造多条检索样本。扩大事实覆盖时，编辑 `seco/niah/data.py` 的 `CUSTOM_DISTRICTS` 和 `CUSTOM_VENUES`。地区描述供两端共用，训练与评测的场所类型应保持互斥，各列表内应避免重复，并优先选用在背景中较少出现的组合。候选数是可抽取的范围，实际覆盖仍取决于样本数和 trial 数。修改问题时只提供定位线索，保留答案在针中的连续原文。
 
 ## 2. 参数与覆盖顺序
 

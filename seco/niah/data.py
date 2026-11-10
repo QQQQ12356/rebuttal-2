@@ -32,17 +32,27 @@ def make_needle(task: str, seed: int, namespace: str, custom: dict | None = None
             "question": f"What is the access value for {key}?", "answer": answer, "key": key}
 
 
-CUSTOM_DESTINATIONS = {
+CUSTOM_DISTRICTS = (
+    "harborfront", "riverside", "lakeside", "hilltop", "woodland",
+    "old town", "market square", "canal district", "seaside", "valley",
+)
+
+CUSTOM_VENUES = {
     "train": (
-        "the orchid conservatory", "the maritime museum", "the riverside gardens",
-        "the butterfly pavilion", "the hilltop observatory", "the sculpture courtyard",
-        "the railway museum", "the lakeside nature center",
+        "orchid conservatory", "maritime museum", "botanical garden",
+        "butterfly pavilion", "astronomical observatory", "sculpture courtyard",
+        "railway museum", "nature center", "textile workshop", "bird sanctuary",
     ),
     "test": (
-        "the tidal aquarium", "the woodland planetarium", "the pottery gallery",
-        "the cliffside lighthouse", "the aviation museum", "the fern greenhouse",
-        "the riverside amphitheater", "the glassblowing studio",
+        "public aquarium", "science planetarium", "pottery gallery", "art museum",
+        "aviation museum", "fern greenhouse", "outdoor amphitheater",
+        "glassblowing studio", "history archive", "folk music hall",
     ),
+}
+
+CUSTOM_DESTINATIONS = {
+    split: tuple(f"the {district} {venue}" for district in CUSTOM_DISTRICTS for venue in venues)
+    for split, venues in CUSTOM_VENUES.items()
 }
 
 
