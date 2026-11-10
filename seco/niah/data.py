@@ -12,7 +12,7 @@ from seco.io import fingerprint, iter_jsonl, read_json, sha256_file
 
 
 DESCRIPTION = "Read the following documents carefully and retrieve the requested information.\n\n"
-PROMPT = "\n\nQuestion: {question}\nReturn only the requested value, without explanation.\nAnswer:"
+PROMPT = "\n\nQuestion: {question}"
 
 
 def make_needle(task: str, seed: int, namespace: str, custom: dict | None = None) -> dict:
@@ -58,6 +58,13 @@ def make_custom_needle(seed: int, split: str) -> dict:
         "question": f"Which place does the {center} recommend visiting {time}?",
         "answer": answer,
     })
+
+
+def make_split_needle(task: str, seed: int, split: str, custom: dict | None = None) -> dict:
+    """Use the same generated needle format for training and evaluation."""
+    if task == "custom" and custom is None:
+        return make_custom_needle(seed, split)
+    return make_needle(task, seed, f"niah-{split}-v1", custom)
 
 
 class Haystack:

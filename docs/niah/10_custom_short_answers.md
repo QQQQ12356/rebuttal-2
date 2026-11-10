@@ -4,7 +4,7 @@
 
 | 字段 | 示例 | 用途 |
 | --- | --- | --- |
-| 问题 | Which place does the harbor visitor center recommend visiting after lunch? | 放在长文本末尾，指定推荐机构与时间 |
+| 问题 | Which place does the harbor visitor center recommend visiting after lunch? | 以 `Question: <问题>` 放在长文本末尾，指定推荐机构与时间 |
 | 针 | The harbor visitor center recommends visiting the maritime museum after lunch. | 完整事实句，插入背景的目标位置 |
 | 答案 | the maritime museum | 针中的连续地点短语，作为训练标签和评测参考答案 |
 
@@ -12,11 +12,27 @@
 
 ## 2. 参数与覆盖顺序
 
+### 训练与评测的结构对照
+
+| 项目 | 合成训练 `custom` | 自动评测 `custom` |
+| --- | --- | --- |
+| 问题、针、答案 | 共用 `make_split_needle` 和 `make_custom_needle` | 同一组函数和同一句式 |
+| 输入顺序 | 说明、背景前段、针、背景后段、`Question: <问题>` | 共用 `construct_sample`，输入顺序相同 |
+| 答案表示 | `answer` 是只含一个地点短语的列表，`labels` 是对应 token 加 EOS | 同一格式，参考答案用于评测计分 |
+| 背景与地点 | 默认 PG19 train，地点用训练词表 | 默认 Paul Graham，地点用互斥的评测词表 |
+| 样本布局 | 每个候选抽取一个长度和一个插针深度 | 同一 trial 的事实复用于所有长度和深度 |
+
+问题后无额外提示句或 `Answer:` 后缀。既有 JSONL 保存的是生成时的 prompt 和 token IDs，需在 Linux 上重新导出才会采用新格式。固定事实评测使用相同的输入组装，但句式由填写的三元组决定。若要和训练的默认模板对照，请省略评测 JSON 中的 `custom` 对象。
+
+### 脚本参数
+
 | 用途 | Python 参数 | Shell 变量 | JSON 字段和默认行为 |
 | --- | --- | --- | --- |
 | 选择合成训练任务 | `--synthetic-tasks custom` | `SYNTHETIC_TASKS` | `synthetic.tasks`，默认 `["uuid","passkey","custom"]` |
 | 设置合成训练目标条数 | `--synthetic-samples 4000` | `SYNTHETIC_SAMPLES` | `synthetic.samples`，默认 4000；0 禁用合成训练 |
+| 跳过全部监督来源 | `--no-supervised` | `NO_SUPERVISED=1` | 将有效配置的 `supervised` 置为空，不读取 Cogito 原始文件 |
 | 选择评测任务 | `--task custom` | `GRID_TASK` | `task`，16K 网格默认 `custom`，128K 配置默认 `uuid` |
+| 设置评测试验数 | `--repeats 5` | `GRID_REPEATS` | `repeats`，正整数；总条数为长度数 × 深度数 × 试验数 |
 | 选择训练配置 | `--config 路径` | `PREPARE_CONFIG` | 默认 `configs/niah/prepare_train.json` |
 | 选择评测配置 | `--config 路径` | `GRID_CONFIG` | 默认 `configs/niah/grid.json` |
 | 设置输出目录 | `--output 路径` | 训练用 `PREPARED_DIR`；评测用 `GRID_DIR` | 选新目录，避免与旧产物混用 |
@@ -29,13 +45,13 @@ Shell 文件顶部的变量可直接修改，也可以在调用前临时赋值�
 
 ## 3. Linux 调用示例
 
-从仓库根目录运行。以下命令保留默认监督来源，仅将合成训练样本切换到 custom。
+从仓库根目录运行。以下命令只生成 custom 训练样本，并跳过 Cogito。此开关作用于训练预处理；如需跳过下载，编辑下载使用的 sources JSON。
 
 ```bash
-PREPARED_DIR=artifacts/niah/prepared/train_custom_v1 SYNTHETIC_TASKS=custom \
+PREPARED_DIR=artifacts/niah/prepared/train_custom_v1 SYNTHETIC_TASKS=custom NO_SUPERVISED=1 \
     bash scripts/niah/sh/20_prepare_train.sh
 
-GRID_DIR=artifacts/niah/prepared/grid_custom_v1 GRID_TASK=custom \
+GRID_DIR=artifacts/niah/prepared/grid_custom_v1 GRID_TASK=custom GRID_REPEATS=5 \
     TRAINING_MANIFEST=artifacts/niah/prepared/train_custom_v1/manifest.json \
     bash scripts/niah/sh/21_prepare_grid.sh
 ```
@@ -43,10 +59,10 @@ GRID_DIR=artifacts/niah/prepared/grid_custom_v1 GRID_TASK=custom \
 也可直接传 Python 参数：
 
 ```bash
-python scripts/niah/py/20_prepare_train.py --synthetic-tasks custom \
+python scripts/niah/py/20_prepare_train.py --synthetic-tasks custom --no-supervised \
     --output artifacts/niah/prepared/train_custom_v1
 
-python scripts/niah/py/21_prepare_grid.py --task custom \
+python scripts/niah/py/21_prepare_grid.py --task custom --repeats 5 \
     --output artifacts/niah/prepared/grid_custom_v1 \
     --training-manifest artifacts/niah/prepared/train_custom_v1/manifest.json
 ```

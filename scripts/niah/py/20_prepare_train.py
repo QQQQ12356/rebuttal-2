@@ -8,7 +8,7 @@ from niah_bootstrap import require_linux
 from seco.data import length_reason, reservoir_add, tokenizer_fingerprint
 from seco.io import fingerprint, iter_jsonl, model_source, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.niah.config import positive, validate_limits
-from seco.niah.data import Haystack, construct_sample, make_custom_needle, make_needle, normalize_supervised
+from seco.niah.data import Haystack, construct_sample, make_split_needle, normalize_supervised
 
 
 def main():
@@ -23,8 +23,11 @@ def main():
     parser.add_argument("--synthetic-tasks", nargs="+", choices=("uuid", "passkey", "custom"),
                         help="Override JSON task list, e.g. --synthetic-tasks custom")
     parser.add_argument("--supervised-samples", type=int, help="Override each supervised source target; 0 = all eligible")
+    parser.add_argument("--no-supervised", action="store_true", help="Skip all supervised sources without reading their files")
     args = parser.parse_args()
     config = read_json(project_path(args.config))
+    if args.no_supervised:
+        config["supervised"] = []
     if args.synthetic_samples is not None:
         config["synthetic"]["samples"] = args.synthetic_samples
     if args.synthetic_tasks is not None:
@@ -116,9 +119,7 @@ def main():
                 length = rng.choice(synthetic["lengths"])
                 task, depth = rng.choice(synthetic["tasks"]), rng.uniform(0, 100)
                 start = rng.randrange(max(1, len(pool.tokens) - length + 1))
-                seed = config["seed"] + index
-                needle = (make_custom_needle(seed, "train") if task == "custom"
-                          else make_needle(task, seed, "niah-train-v1"))
+                needle = make_split_needle(task, config["seed"] + index, "train")
                 yield construct_sample(tokenizer, pool, length=length, depth=depth, needle=needle,
                                        start=start, sample_id=f"niah:train:synthetic:{index}",
                                        repeat=synthetic["repeat_haystack"])

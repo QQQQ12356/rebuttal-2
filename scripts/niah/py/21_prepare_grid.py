@@ -6,7 +6,7 @@ from niah_bootstrap import require_linux
 from seco.data import length_reason, tokenizer_fingerprint
 from seco.io import fingerprint, model_source, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.niah.config import validate_grid
-from seco.niah.data import Haystack, construct_sample, make_custom_needle, make_needle
+from seco.niah.data import Haystack, construct_sample, make_split_needle
 
 
 def main():
@@ -19,11 +19,14 @@ def main():
     parser.add_argument("--revision", default="main")
     parser.add_argument("--task", choices=("uuid", "passkey", "custom"),
                         help="Override JSON task; custom uses the test template unless JSON supplies a fixed custom triple")
+    parser.add_argument("--repeats", type=int, help="Override the number of trials in the grid JSON")
     parser.add_argument("--training-manifest", help="Optional explicit training manifest for overlap checks")
     args = parser.parse_args()
     config = read_json(project_path(args.config))
     if args.task is not None:
         config["task"] = args.task
+    if args.repeats is not None:
+        config["repeats"] = args.repeats
     validate_grid(config)
     from transformers import AutoTokenizer
 
@@ -60,9 +63,7 @@ def main():
         nonlocal count
         for trial in range(config["repeats"]):
             seed = config["seed"] + trial
-            task = config["task"]
-            needle = (make_custom_needle(seed, "test") if task == "custom" and "custom" not in config
-                      else make_needle(task, seed, "niah-test-v1", config.get("custom")))
+            needle = make_split_needle(config["task"], seed, "test", config.get("custom"))
             if fingerprint(needle["answer"]) in blocked_answers:
                 raise ValueError("Evaluation answer was used in NIAH training; change evaluation seed")
             # Same needle and haystack starting point across all lengths/depths in
