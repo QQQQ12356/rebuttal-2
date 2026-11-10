@@ -32,6 +32,34 @@ def make_needle(task: str, seed: int, namespace: str, custom: dict | None = None
             "question": f"What is the access value for {key}?", "answer": answer, "key": key}
 
 
+CUSTOM_DESTINATIONS = {
+    "train": (
+        "the orchid conservatory", "the maritime museum", "the riverside gardens",
+        "the butterfly pavilion", "the hilltop observatory", "the sculpture courtyard",
+        "the railway museum", "the lakeside nature center",
+    ),
+    "test": (
+        "the tidal aquarium", "the woodland planetarium", "the pottery gallery",
+        "the cliffside lighthouse", "the aviation museum", "the fern greenhouse",
+        "the riverside amphitheater", "the glassblowing studio",
+    ),
+}
+
+
+def make_custom_needle(seed: int, split: str) -> dict:
+    namespace = f"niah-{split}-v1"
+    rng = random.Random(int(fingerprint([namespace, seed, "custom"]), 16))
+    center = rng.choice(("harbor visitor center", "riverside information desk",
+                         "old town tourism office", "lakeside welcome center"))
+    time = rng.choice(("at dawn", "after lunch", "in the afternoon", "at sunset"))
+    answer = rng.choice(CUSTOM_DESTINATIONS[split])
+    return make_needle("custom", seed, namespace, {
+        "needle": f"\n\nThe {center} recommends visiting {answer} {time}.\n\n",
+        "question": f"Which place does the {center} recommend visiting {time}?",
+        "answer": answer,
+    })
+
+
 class Haystack:
     """Compact token pool. Never repeats a corpus unless explicitly requested."""
     def __init__(self, path, tokenizer, *, max_tokens: int, per_document_tokens: int,

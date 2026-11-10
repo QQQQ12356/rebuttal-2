@@ -8,7 +8,7 @@ from niah_bootstrap import require_linux
 from seco.data import length_reason, reservoir_add, tokenizer_fingerprint
 from seco.io import fingerprint, iter_jsonl, model_source, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.niah.config import positive, validate_limits
-from seco.niah.data import Haystack, construct_sample, make_needle, normalize_supervised
+from seco.niah.data import Haystack, construct_sample, make_custom_needle, make_needle, normalize_supervised
 
 
 def main():
@@ -20,11 +20,15 @@ def main():
     parser.add_argument("--model", default="artifacts/models/Qwen3-4B-Instruct-2507")
     parser.add_argument("--revision", default="main")
     parser.add_argument("--synthetic-samples", type=int, help="Override target count; 0 disables synthetic training")
+    parser.add_argument("--synthetic-tasks", nargs="+", choices=("uuid", "passkey", "custom"),
+                        help="Override JSON task list, e.g. --synthetic-tasks custom")
     parser.add_argument("--supervised-samples", type=int, help="Override each supervised source target; 0 = all eligible")
     args = parser.parse_args()
     config = read_json(project_path(args.config))
     if args.synthetic_samples is not None:
         config["synthetic"]["samples"] = args.synthetic_samples
+    if args.synthetic_tasks is not None:
+        config["synthetic"]["tasks"] = args.synthetic_tasks
     if args.supervised_samples is not None:
         for spec in config["supervised"]:
             spec["samples"] = args.supervised_samples
@@ -37,8 +41,8 @@ def main():
         positive(spec["samples"], "supervised.samples", allow_zero=True)
     if len({spec["source"] for spec in config["supervised"]}) != len(config["supervised"]):
         raise ValueError("Duplicate supervised sources")
-    if not synthetic["lengths"] or not synthetic["tasks"] or set(synthetic["tasks"]) - {"uuid", "passkey"}:
-        raise ValueError("Synthetic training needs lengths and uuid/passkey tasks; fixed custom needles are test-only")
+    if not synthetic["lengths"] or not synthetic["tasks"] or set(synthetic["tasks"]) - {"uuid", "passkey", "custom"}:
+        raise ValueError("Synthetic training needs lengths and tasks chosen from uuid, passkey, and custom")
     for length in synthetic["lengths"]:
         positive(length, "synthetic length")
     from transformers import AutoTokenizer
@@ -112,7 +116,9 @@ def main():
                 length = rng.choice(synthetic["lengths"])
                 task, depth = rng.choice(synthetic["tasks"]), rng.uniform(0, 100)
                 start = rng.randrange(max(1, len(pool.tokens) - length + 1))
-                needle = make_needle(task, config["seed"] + index, "niah-train-v1")
+                seed = config["seed"] + index
+                needle = (make_custom_needle(seed, "train") if task == "custom"
+                          else make_needle(task, seed, "niah-train-v1"))
                 yield construct_sample(tokenizer, pool, length=length, depth=depth, needle=needle,
                                        start=start, sample_id=f"niah:train:synthetic:{index}",
                                        repeat=synthetic["repeat_haystack"])

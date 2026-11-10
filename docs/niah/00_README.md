@@ -52,7 +52,7 @@ BENCHMARK_DIR=artifacts/niah/benchmarks/你的实际benchmark \
     bash scripts/niah/sh/70_plot_heatmap.sh
 ```
 
-默认训练目标：4,000 条 PG19 合成针 + 各 2,000 条 CogitoProbe-Bits/Bind，实际以筛选统计为准。默认测试为 4 个长度×11 个深度×5 个 trial=220 条，每个压缩比各测完整同一网格。默认四个比例共 880 个计分样本，另有不计分的预热生成。
+默认训练目标：4,000 条 PG19 合成针（UUID、passkey 和自然语言短答案混合）+ 各 2,000 条 CogitoProbe-Bits/Bind，实际以筛选统计为准。默认测试为自然语言短答案网格，4 个长度×11 个深度×5 个 trial=220 条，每个压缩比各测完整同一网格。默认四个比例共 880 个计分样本，另有不计分的预热生成。参见 [10 自然语言短答案](10_custom_short_answers.md)。
 
 如果要诊断训练集表现，用训练时的 `PREPARED_DIR` 和对应 checkpoint 运行 `EVAL_TRAIN=1 bash scripts/niah/sh/51_benchmark_train.sh`。参数、预检和产物见 [09 训练集评测](09_train_benchmark.md)。
 

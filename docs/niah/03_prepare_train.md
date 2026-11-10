@@ -14,7 +14,7 @@ SYNTHETIC_SAMPLES=32 SUPERVISED_SAMPLES=16 \
 ## 1. 处理规则
 
 1. 读取 heldout_corpora 的完整正文哈希集合，排除训练背景中的精确归一化重复文档。
-2. synthetic 从 PG19 train 的已分词正文池随机取窗口，在随机深度插入新 passkey/UUID，长度从数组抽取；针的 key 和答案不出现在问题中，答案只能从背景检索。
+2. synthetic 从 PG19 train 的已分词正文池随机取窗口，在随机深度插入合成针，长度从数组抽取。UUID 和 passkey 样本在问题中给出查询键，答案为对应值。custom 用英文推荐句作针，问题询问推荐地点，答案是针中的地点短语。参见 [10 自然语言短答案](10_custom_short_answers.md)。
 3. supervised 读取两个源的 context/query/answer 文本，丢弃其他 tokenizer 的 IDs，使用本次 Qwen tokenizer 重新编码。
 4. 按 context/prompt 内容和 ID 去重，按输入、答案与压缩后解码预算过滤；已经含针的样本不截尾，避免删掉监督证据。
 5. 对每源合格候选做独立固定种子的 reservoir sampling，再全局打乱，保存 train.jsonl 和完整 manifest。
@@ -38,7 +38,7 @@ SYNTHETIC_SAMPLES=32 SUPERVISED_SAMPLES=16 \
 | synthetic.candidates | 8000 | 先生成多少候选，再筛选和采样；不是最终样本数 |
 | synthetic.corpus | pg19_train | 训练背景文件名，不含 .jsonl |
 | synthetic.lengths | [2048,4096,8192,16384] | 完整 encoder token 长度候选，均匀抽取 |
-| synthetic.tasks | [uuid,passkey] | 每条随机选择任务；训练不允许固定 custom 针 |
+| synthetic.tasks | [uuid,passkey,custom] | 每个合成候选随机选择任务；设为 ["custom"] 可仅生成自然语言事实针 |
 | synthetic.max_corpus_tokens | 2000000 | 背景池 token 上限，控制 RAM |
 | synthetic.per_document_tokens | 65536 | 每篇最多取这些正文 token，控制单篇占比 |
 | synthetic.repeat_haystack | false | 默认背景不循环重复；true 仅用于显式重复实验 |
@@ -47,7 +47,7 @@ SYNTHETIC_SAMPLES=32 SUPERVISED_SAMPLES=16 \
 
 `K=min(L_context,max(2,ceil(L_context/min_ratio)))`。筛选要求 `L_context+L_prompt<=max_input_tokens`、`L_answer<=max_answer_tokens`、`K+L_prompt+L_answer<=max_decoder_tokens`。源数据的 seq_len 字段来自其他 tokenizer，只作原始元数据，不能代替 Qwen 重新计算的长度。
 
-Python 入口参数：`--config` 选择上述配置；`--raw-dir/--output` 选独立目录；`--model/--revision` 选 tokenizer；`--synthetic-samples` 覆盖合成目标数，0 禁用；`--supervised-samples` 覆盖每个监督源的配额，0 全部合格。Shell 中相应变量说明见 [07](07_parameters.md)。
+Python 入口参数：`--config` 选择上述配置；`--raw-dir/--output` 选独立目录；`--model/--revision` 选 tokenizer；`--synthetic-samples` 覆盖合成目标数，0 禁用；`--synthetic-tasks custom` 覆盖合成任务列表；`--supervised-samples` 覆盖每个监督源的配额，0 使用全部合格样本。Shell 中相应变量说明见 [07](07_parameters.md)。
 
 ## 3. 产物与调整
 

@@ -23,7 +23,7 @@ GRID_CONFIG=configs/niah/grid_128k.json GRID_DIR=artifacts/niah/prepared/grid_12
 | grid JSON 字段 | 默认 | 说明 |
 | --- | --- | --- |
 | corpus | paulgraham | RAW_DIR 中的背景文件名，不含扩展名 |
-| task | uuid | uuid / passkey / custom；默认需要精确检索随机值 |
+| task | custom | custom 检索自然语言短语；uuid / passkey 检索随机值 |
 | lengths | [2048,4096,8192,16384] | 严格递增、无重复的完整 encoder token 长度 |
 | depths | [0,10,...,100] | 严格递增、无重复、范围 0–100 |
 | repeats | 5 | 每格 trial 数，不是批大小 |
@@ -42,7 +42,7 @@ GRID_CONFIG=configs/niah/grid_128k.json GRID_DIR=artifacts/niah/prepared/grid_12
 
 ## 3. custom 针与背景选项
 
-如需类似原始自然语言事实针，在新配置中设 `task=custom` 并添加：
+默认 `task=custom` 从评测专用词表生成自然语言短答案针，每个 trial 根据种子生成一个样本。若要用同一条人工事实覆盖所有 trial，在配置中添加 `custom` 对象：
 
 ```json
 "custom": {
@@ -52,7 +52,7 @@ GRID_CONFIG=configs/niah/grid_128k.json GRID_DIR=artifacts/niah/prepared/grid_12
 }
 ```
 
-这是测试配置中的一个字段，不能替换整个 JSON。custom 的答案必须在 needle 中，生成预算必须容纳完整答案；不要用同一固定 custom 针训练又测试。固定事实可能受已有知识/记忆影响，UUID/passkey 更适合诊断确切位置检索。代码拒绝背景已经包含目标答案的样本，不尝试通过替换词语悄悄修题。
+将该对象加到原有网格 JSON 顶层，保留长度、深度和预算字段。答案必须出现在针里，且生成预算必须容纳完整答案。人工三元组也受背景答案检查和训练答案重叠检查约束。自动生成和固定事实的命令示例见 [10 自然语言短答案](10_custom_short_answers.md)。
 
 改用 PG19 test 时，先下载 pg19_test，把 corpus 改为 pg19_test；不要改为 pg19_train。使用本地背景时准备独立文本 JSONL。背景池不足最大长度默认报错，增加正文或池上限；循环重复必须显式设置并在实验报告声明。
 

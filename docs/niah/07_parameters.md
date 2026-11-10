@@ -29,8 +29,10 @@ NIAH Shell 位于 scripts/niah/sh，Python 位于 scripts/niah/py。标量和评
 | 同上 | MODEL_PATH / RAW_DIR | 默认本地模型 / NIAH_ROOT/raw |
 | 同上 | PREPARED_DIR | NIAH_ROOT/prepared/train_v1；必须全新 |
 | 同上 | SYNTHETIC_SAMPLES | 空用 JSON；0 禁用合成源 |
+| 同上 | SYNTHETIC_TASKS | 空用 JSON；空格分隔，例如 `"uuid passkey custom"`；`custom` 只筛选合成任务 |
 | 同上 | SUPERVISED_SAMPLES | 空用每源 JSON；0 使用全部合格监督样本 |
 | 21_prepare_grid.sh | GRID_CONFIG | configs/niah/grid.json；可切 grid_128k.json |
+| 同上 | GRID_TASK | 空用 JSON；可填 `custom`、`uuid` 或 `passkey` |
 | 同上 | MODEL_PATH / RAW_DIR | 与预处理训练保持 tokenizer 一致 |
 | 同上 | GRID_DIR | NIAH_ROOT/prepared/grid_v1；与训练目录分开 |
 | 同上 | TRAINING_MANIFEST | 空时尝试默认 train_v1 manifest；自定义训练目录应显式填写 |
