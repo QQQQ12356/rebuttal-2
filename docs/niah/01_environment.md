@@ -18,7 +18,7 @@ python -m pip check
 ```bash
 conda create -n seco_niah python=3.10 -y
 conda activate seco_niah
-bash scripts/niah/sh/00_setup_environment.sh
+bash scripts/niah/sh/seco/00_setup_environment.sh
 ```
 
 | 文件/变量 | 默认 | 用途 |

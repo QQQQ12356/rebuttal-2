@@ -1,4 +1,4 @@
-"""Export a self-contained HF encoder/decoder pair; no manual LoRA key rewriting."""
+"""Export the merged language models, tokenizer, and learned method parameters."""
 import argparse
 from pathlib import Path
 import tempfile
@@ -35,4 +35,4 @@ def main():
     write_json(payload / "experiment.json", metadata)
     os.rename(payload, output)
     temporary.rmdir()
-    print(f"Merged encoder and decoder saved to {output}")
+    print(f"Merged {model.method} model saved to {output}")

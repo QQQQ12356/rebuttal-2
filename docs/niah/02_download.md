@@ -12,29 +12,29 @@
 | paulgraham | [gkamradt 仓库中的 essays](https://github.com/gkamradt/needle-in-a-haystack/tree/main/needlehaystack/PaulGrahamEssays) | 仅作为 held-out 测试背景，接近指定参考实现的背景类型 |
 | pg19_test | emozilla/pg19，test split | 可选 held-out 背景，默认不下载；更换 grid.corpus 后启用 |
 
-Cogito 数据不是原始 gkamradt 单针深度网格：Bits 含 packed multi-key recall，Bind 含实体绑定任务。它们用于额外训练，不把其结果冒充单针基准。公开卡片提供 train/validation/test，下载器只读取 train；卡片现有分词是其他模型的 tokenizer，**不能直接给 Qwen 使用**。
+Cogito 数据不是原始 gkamradt 单针深度网格：Bits 含 packed multi-key recall，Bind 含实体绑定任务。它们用于额外训练，不把其结果冒充单针基准。公开卡片提供 train/validation/test，下载器只读取 train；卡片现有分词是其他模型的 tokenizer，**不能直接给 Llama 使用**。
 
 还参考了 [NVIDIA RULER 的 NIAH 任务设计](https://github.com/NVIDIA/RULER/blob/main/scripts/synthetic.yaml)：正文/噪声背景、数字或 UUID 值。当前代码生成的是本项目 SeCo 的明确版本协议，不声称逐字复现完整 RULER，也不依赖运行其生成脚本。
 
 ## 2. 下载
 
 ```bash
-bash scripts/niah/sh/10_download_data.sh
+bash scripts/niah/sh/seco/10_download_data.sh
 
 # 可选 held-out PG19 test；不会下载或覆盖五数据集流程。
-bash scripts/niah/sh/10_download_data.sh --sources pg19_test
+bash scripts/niah/sh/seco/10_download_data.sh --sources pg19_test
 
 # 只下载一个源到新 raw 版本。
-RAW_DIR=artifacts/niah/raw_v2 bash scripts/niah/sh/10_download_data.sh --sources cogito_bits
+RAW_DIR=artifacts/seco/Llama-3.2-1B-Instruct/niah/raw_v2 bash scripts/niah/sh/seco/10_download_data.sh --sources cogito_bits
 
 # 计划用 SYNTHETIC_SAMPLES=0 构建纯 Cogito 训练集时，仍下载默认留出背景供去重。
-bash scripts/niah/sh/10_download_data.sh --sources cogito_bits cogito_bind paulgraham
+bash scripts/niah/sh/seco/10_download_data.sh --sources cogito_bits cogito_bind paulgraham
 ```
 
 | Python 参数 | 默认 | 含义 |
 | --- | --- | --- |
 | --registry | configs/niah/sources.json | 明确列出各源 repo/config/split/revision/role |
-| --output | artifacts/niah/raw | 独立 raw 根目录 |
+| --output | artifacts/seco/Llama-3.2-1B-Instruct/niah/raw | 独立 raw 根目录 |
 | --sources | 注册表 enabled 的源 | 一次可指定多个；pg19_test 默认 enabled=false |
 | --limit | 使用各源 limit | 覆盖每源读取前 N 行；0 表示全部，不是随机抽样 |
 
@@ -47,7 +47,7 @@ bash scripts/niah/sh/10_download_data.sh --sources cogito_bits cogito_bind paulg
 ## 3. 镜像、本地文件与来源追溯
 
 ```bash
-HF_ENDPOINT=https://hf-mirror.com bash scripts/niah/sh/10_download_data.sh \
+HF_ENDPOINT=https://hf-mirror.com bash scripts/niah/sh/seco/10_download_data.sh \
     --sources pg19_train cogito_bits cogito_bind
 ```
 
@@ -55,7 +55,7 @@ HF_ENDPOINT 只作用于 Hub 请求。Paul Graham 从 GitHub 解析 commit，再
 
 本地背景格式：`{"id":"文档标识","text":"正文"}`，存为 `RAW_DIR/<corpus>.jsonl`。本地监督格式至少为 `{"id":"样本标识","context":"正文","query":"问题","answer":"答案"}`；若带 split/source_split，必须为 train。没有 sidecar 的输入会标明 local_file 与实际哈希，不补造 Hub commit。
 
-模型下载使用 `scripts/niah/sh/01_download_model.sh`，默认保存到此前同一默认模型目录以复用文件。`MODEL_ID/MODEL_PATH/REVISION` 可分别改仓库、目录、版本；改变 tokenizer 后重新生成 NIAH 训练集和网格。
+模型下载使用 `scripts/niah/sh/seco/01_download_model.sh`，默认保存到此前同一默认模型目录以复用文件。`MODEL_ID/MODEL_PATH/REVISION` 可分别改仓库、目录、版本；改变 tokenizer 后重新生成 NIAH 训练集和网格。
 
 ## 4. 与五数据集下载修复的适用范围
 

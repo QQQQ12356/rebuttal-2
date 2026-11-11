@@ -4,9 +4,9 @@
 
 | 评测 | Bash 启动脚本 | Python 入口与任务说明 |
 |---|---|---|
-| Benchmark | [50_benchmark.sh](../scripts/benchmark/sh/50_benchmark.sh) | [50_benchmark.py](../scripts/benchmark/py/50_benchmark.py) · [05 Benchmark 评测](benchmark/05_benchmark.md) |
-| NIAH | [50_benchmark.sh](../scripts/niah/sh/50_benchmark.sh) | [50_benchmark.py](../scripts/niah/py/50_benchmark.py) · [06 NIAH 评测](niah/06_benchmark_plot.md) |
-| RULER QA | [50_benchmark.sh](../scripts/ruler_qa/sh/50_benchmark.sh) | [50_benchmark.py](../scripts/ruler_qa/py/50_benchmark.py) · [05 RULER QA 评测](ruler_qa/05_evaluation.md) |
+| Benchmark | [50_benchmark.sh](../scripts/benchmark/sh/seco/50_benchmark.sh) | [50_benchmark.py](../scripts/benchmark/py/seco/50_benchmark.py) · [05 Benchmark 评测](benchmark/05_benchmark.md) |
+| NIAH | [50_benchmark.sh](../scripts/niah/sh/seco/50_benchmark.sh) | [50_benchmark.py](../scripts/niah/py/seco/50_benchmark.py) · [06 NIAH 评测](niah/06_benchmark_plot.md) |
+| RULER QA | [50_benchmark.sh](../scripts/ruler_qa/sh/seco/50_benchmark.sh) | [50_benchmark.py](../scripts/ruler_qa/py/seco/50_benchmark.py) · [05 RULER QA 评测](ruler_qa/05_evaluation.md) |
 
 ## 1. 修改方式
 
@@ -46,14 +46,14 @@
 ```bash
 # Benchmark，默认贪心，单次调整 QA 长度
 CHECKPOINT=/path/to/benchmark-checkpoint QA_MAX_NEW_TOKENS=48 \
-  bash scripts/benchmark/sh/50_benchmark.sh
+  bash scripts/benchmark/sh/seco/50_benchmark.sh
 
 # NIAH，使用环境变量启用 beam search
 CHECKPOINT=/path/to/niah-checkpoint DECODING=beam NUM_BEAMS=4 \
-  bash scripts/niah/sh/50_benchmark.sh
+  bash scripts/niah/sh/seco/50_benchmark.sh
 
 # RULER QA，使用 CLI 启用采样
-CHECKPOINT=/path/to/ruler-checkpoint bash scripts/ruler_qa/sh/50_benchmark.sh \
+CHECKPOINT=/path/to/ruler-checkpoint bash scripts/ruler_qa/sh/seco/50_benchmark.sh \
   --decoding sample --temperature 0.7 --top-p 0.9 --seed 42
 ```
 

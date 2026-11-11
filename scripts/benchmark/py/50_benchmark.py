@@ -6,6 +6,7 @@ import random
 import time
 
 from _bootstrap import require_linux
+from seco.experiment import artifact_path, memory_token_bound, validate_ratios
 from seco.data import BENCHMARKS, Collator, tokenizer_fingerprint
 from seco.generation import add_generation_arguments, generation_options
 from seco.io import iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
@@ -18,7 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", required=True, help="final/checkpoint-N adapter folder OR a merged export")
     parser.add_argument("--model", help="Override base location for an adapter checkpoint")
-    parser.add_argument("--prepared-dir", default="artifacts/prepared/default")
+    parser.add_argument("--prepared-dir", default=artifact_path("benchmark", "prepared/default"))
     parser.add_argument("--output", required=True, help="New benchmark directory; never overwrite a previous run")
     parser.add_argument("--datasets", nargs="+", choices=BENCHMARKS, default=list(BENCHMARKS))
     parser.add_argument("--ratios", nargs="+", type=float, default=[4, 8, 16, 32])
@@ -73,6 +74,7 @@ def main():
         raise ValueError("Generation exceeds preprocessing test generation budget; preprocess again")
     log_progress(f"{worker_label} loading checkpoint {source}")
     model, experiment = load_checkpoint_model(source, model_path=args.model, attention=args.attention)
+    validate_ratios(model.model_config, args.ratios)
     if tokenizer_fingerprint(model.tokenizer) != manifest["tokenizer_fingerprint"]:
         raise ValueError("Evaluation tokenizer differs from preprocessing")
     model.to(device).eval()
@@ -96,6 +98,7 @@ def main():
     if rank == 0:
         identity_file = "artifact.json" if (source / "artifact.json").exists() else "model.safetensors"
         write_json(output / "benchmark.json", {"arguments": vars(args), "experiment": experiment,
+                   "checkpoint_identity": sha256_file(source / identity_file),
                    "generation_by_dataset": decoding,
                    "data_manifest_sha256": sha256_file(prepared / "manifest.json"),
                    "samples": len(selected), "world_size": world, "gpu": torch.cuda.get_device_name(device),
@@ -118,8 +121,11 @@ def main():
                 continue
             max_new = limits[name]
             for row in rows:
-                centers = min(row["context_tokens"], max(2, math.ceil(row["context_tokens"] / ratio)))
-                if len(row["input_ids"]) > model.config.max_position_embeddings or centers + row["prompt_tokens"] + max_new > model.config.max_position_embeddings:
+                centers = memory_token_bound(model.model_config, row["context_tokens"], ratio)
+                decoder_length = centers + row["prompt_tokens"] + max_new
+                if decoder_length > manifest["arguments"]["max_decoder_tokens"]:
+                    raise ValueError(f"Sample exceeds the prepared decoder budget: {row['id']}")
+                if max(len(row["input_ids"]), decoder_length) > model.config.max_position_embeddings:
                     raise ValueError(f"Sample exceeds model position limit: {row['id']}")
             progress = BatchProgress(f"{label} dataset={name}", len(rows))
             loader = DataLoader(rows, batch_size=args.batch_size, collate_fn=collator,
@@ -143,6 +149,7 @@ def main():
                 for row, prediction in zip(batch_rows, texts):
                     em, f1 = score_answer(prediction, row["answer"])
                     result = {"id": row["id"], "dataset": name, "prompt": row["prompt"],
+                              "memory_tokens_upper_bound": memory_token_bound(model.model_config, row["context_tokens"], ratio),
                               "answer": row["answer"], "prediction": prediction, "em": em, "f1": f1,
                               "ratio": ratio, "context_tokens": row["context_tokens"],
                               "seconds_per_sample": seconds / len(texts)}

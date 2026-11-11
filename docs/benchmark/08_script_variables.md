@@ -22,11 +22,11 @@
 | --- | --- | --- |
 | 00_setup_environment.sh | TORCH_INDEX | CUDA 12.6 torch wheel 源，按驱动适配 |
 | 同上 | INSTALL_DEEPSPEED | 1；0 跳过 ZeRO 依赖 |
-| 01_download_model.sh | MODEL_ID | Qwen/Qwen3-4B-Instruct-2507 |
+| 01_download_model.sh | MODEL_ID | meta-llama/Llama-3.2-1B-Instruct |
 | 同上 | REVISION | main；最终复现建议 commit |
-| 同上 | MODEL_PATH | artifacts/models/Qwen3-4B-Instruct-2507 |
+| 同上 | MODEL_PATH | artifacts/seco/Llama-3.2-1B-Instruct/model |
 | 10_download_data.sh | REGISTRY | configs/benchmark/datasets.json；修改各源 repo/config/split/revision |
-| 同上 | RAW_DIR | artifacts/raw |
+| 同上 | RAW_DIR | artifacts/seco/Llama-3.2-1B-Instruct/benchmark/raw |
 | 同上 | ROLE | all；可改 training 或 benchmark |
 | 同上 | TRAIN_LIMIT | 30000；每训练源原始前 N 行，0 全部 |
 | 同上 | DOWNLOAD_MODE | local；先下载分片到本地再解码，stream 为旧远端模式 |
@@ -45,7 +45,7 @@
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
 | MODEL_PATH | 默认本地模型目录 | tokenizer 来源，必须与后续训练/测试一致 |
-| RAW_DIR / PREPARED_DIR | artifacts/raw / artifacts/prepared/default | 输入根目录 / 全新输出版本 |
+| RAW_DIR / PREPARED_DIR | artifacts/seco/Llama-3.2-1B-Instruct/benchmark/raw / artifacts/seco/Llama-3.2-1B-Instruct/benchmark/prepared/default | 输入根目录 / 全新输出版本 |
 | DATASETS | 五个训练源数组 | 与 TRAIN_SAMPLES 按位置对应 |
 | TRAIN_SAMPLES | 各 5000 | 合格后抽样目标；Python 也可传单个数 |
 | TEST_SAMPLES | 500 | 每个 Twwilght 测试源抽样数 |
@@ -68,10 +68,10 @@
 | NNODES / NODE_RANK | 1 / 0 | 节点总数 / 当前节点编号 |
 | MASTER_ADDR / MASTER_PORT | 127.0.0.1 / 29500 | rendezvous 地址/端口，多节点需可访问主节点 |
 | BACKEND | zero2 | ddp / zero2 / zero2_cpu / zero3_cpu |
-| CONFIG | configs/benchmark/train.json | LoRA、dtype、attention、压缩比数组、优化器等 |
+| CONFIG | configs/benchmark/seco/train.json | LoRA、dtype、attention、压缩比数组、优化器等 |
 | MODEL_PATH | 默认本地模型目录 | 覆盖 JSON 基座路径 |
-| PREPARED_DIR | artifacts/prepared/default | 覆盖 JSON 数据路径 |
-| RUN_NAME | qwen3_4b_seco | 新实验目录的人类标签，实际还追加 UTC 时间和随机后缀 |
+| PREPARED_DIR | artifacts/seco/Llama-3.2-1B-Instruct/benchmark/prepared/default | 覆盖 JSON 数据路径 |
+| RUN_NAME | benchmark | 新实验目录的人类标签，实际还追加 UTC 时间和随机后缀 |
 | RUN_DIR | 自动唯一目录 | 显式指定实验目录；多节点必须所有节点一致 |
 | RESUME | 空 | checkpoint-N 路径；非空时 RUN_DIR 默认取其父目录 |
 | MAX_STEPS | 空 | 空使用 JSON；正数覆盖累计 optimizer-step 目标 |
@@ -85,8 +85,8 @@
 | 同上 | MERGED_DIR | CHECKPOINT 后接 _merged；必须尚不存在 |
 | 同上 | MERGE_DEVICE | cpu；也可 cuda，注意双模型显存 |
 | 41_import_checkpoint.sh | SOURCE | 必改为旧未合并双 LoRA safetensors 文件 |
-| 同上 | CONFIG | configs/benchmark/train.json；旧模型必须另配对应基座与 r/alpha/dropout |
-| 同上 | OUTPUT_DIR | artifacts/imported/original_seco，新格式输出目录 |
+| 同上 | CONFIG | configs/benchmark/seco/train.json；旧模型必须另配对应基座与 r/alpha/dropout |
+| 同上 | OUTPUT_DIR | artifacts/seco/Llama-3.2-1B-Instruct/benchmark/imported/original_seco，新格式输出目录 |
 
 基座文件迁移时 Python 提供 `--model /新基座路径`；必须保持相同权重。迁移工具不猜测旧 checkpoint 的 LoRA alpha 或来源数据。
 
@@ -96,7 +96,7 @@
 | --- | --- | --- |
 | 50_benchmark.sh | CUDA_VISIBLE_DEVICES / NPROC_PER_NODE | 0 / 1；每卡完整双模型，数据分片 |
 | 同上 | CHECKPOINT | 必改为真实 adapter/merged 目录 |
-| 同上 | PREPARED_DIR | artifacts/prepared/default |
+| 同上 | PREPARED_DIR | artifacts/seco/Llama-3.2-1B-Instruct/benchmark/prepared/default |
 | 同上 | OUTPUT_DIR | 自动唯一 benchmark 目录 |
 | 同上 | DATASETS / RATIOS | 四个测试源 / [4,8,16,32] |
 | 同上 | BATCH_SIZE / SAMPLES | 1 / 0；samples=0 使用全部 prepared 测试样本 |
@@ -109,6 +109,6 @@
 | 同上 | EXCEL_PATH | 自动唯一 xlsx 路径 |
 | 同上 | INCLUDE_DETAILS | 1；0 只导出指标汇总 |
 
-`90_validate.sh` 使用公共 PYTHON_BIN，没有实验超参数。训练和 benchmark 的 LOG_FILE 自动存放 `logs/`；各次日志独立。目录自动命名用 UTC 时间，避免机器时区影响，实验复现实质由保存的配置、种子与哈希决定。
+`90_validate.sh` 使用公共 PYTHON_BIN，没有实验超参数。训练和 benchmark 的 LOG_FILE 自动存放任务目录下的 `logs/`；各次日志独立。目录自动命名用 UTC 时间，避免机器时区影响，实验复现实质由保存的配置、种子与哈希决定。
 
 常见修改定位：改每数据集训练数量→20 的 TRAIN_SAMPLES；改随机比例→train.json 的 model；改 ZeRO/卸载→30 的 BACKEND；改 GPU→对应入口 CUDA_VISIBLE_DEVICES/NPROC_PER_NODE；改生成长度→50 的 QA/NEWS 变量，同时检查预处理预算；改测试数量→优先改 20 的 TEST_SAMPLES 重新生成固定测试版本，临时子样本可用 50 的 SAMPLES。

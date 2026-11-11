@@ -6,16 +6,34 @@ import math
 from pathlib import Path
 
 from .io import model_source, project_path, read_json
+from .experiment import check_method, validate_ratios
 
 
 def load_config(path: str | Path) -> dict:
     config = copy.deepcopy(read_json(path))
     model, train = config["model"], config["training"]
+    check_method(model)
+    method = model.get("method", "seco")
+    positive_keys = {"comi": ("encoder_layers", "segment_size"), "icae": ("memory_slots",),
+                     "ram": ("encoder_layers", "segment_batch_size")}.get(method, ())
+    for key in positive_keys:
+        if type(model.get(key)) is not int or model[key] < 1:
+            raise ValueError(f"model.{key} must be a positive integer")
+    if method in ("comi", "ram") and (type(model.get("fusion_layers")) is not int or model["fusion_layers"] < 0):
+        raise ValueError("model.fusion_layers must be a nonnegative integer")
+    if method == "ram" and not 0 <= model.get("keep_ratio", -1) < 1:
+        raise ValueError("model.keep_ratio must be in [0, 1)")
+    if method == "ram":
+        for key, default, minimum in (("contrastive_loss_weight", 0, 0), ("contrastive_temperature", 0.1, 1e-8)):
+            value = model.get(key, default)
+            if not isinstance(value, (int, float)) or not math.isfinite(value) or value < minimum:
+                raise ValueError(f"model.{key} must be finite and >= {minimum}")
     if model["ratio_mode"] not in ("fixed", "random"):
         raise ValueError("ratio_mode must be fixed or random")
     ratios = [model["compress_ratio"], *model["random_ratios"]]
     if not ratios or any(not isinstance(v, (int, float)) or not math.isfinite(v) or v < 1 for v in ratios):
         raise ValueError("Compression ratios must be finite numbers >= 1")
+    validate_ratios(model, ratios)
     if model["ratio_mode"] == "random" and not model["random_ratios"]:
         raise ValueError("random_ratios cannot be empty in random mode")
     if model["dtype"] not in ("bfloat16", "float16", "float32"):

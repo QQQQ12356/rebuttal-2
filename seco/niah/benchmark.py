@@ -6,6 +6,7 @@ import os
 import time
 
 from seco.data import Collator, limit_grid_rows, tokenizer_fingerprint
+from seco.experiment import artifact_path, check_method, memory_token_bound, validate_ratios
 from seco.generation import add_generation_arguments, generation_options
 from seco.io import fingerprint, iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.niah.metrics import aggregate, aggregate_training, score_prediction
@@ -18,8 +19,8 @@ def main(*, train_only=False):
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--model", help="Relocated base directory for adapter checkpoints")
     data = parser.add_mutually_exclusive_group()
-    data.add_argument("--grid-dir", help="Held-out grid directory (default: artifacts/niah/prepared/grid_v1)")
-    data.add_argument("--prepared-dir", help="Training data directory (default: artifacts/niah/prepared/train_v1)")
+    data.add_argument("--grid-dir", help="Held-out grid directory (default: method's prepared/grid_v1)")
+    data.add_argument("--prepared-dir", help="Training data directory (default: method's prepared/train_v1)")
     parser.add_argument("--eval-train", action="store_true", help="Explicitly evaluate the checkpoint's own NIAH training data")
     parser.add_argument("--output", required=True, help="New independent NIAH benchmark directory")
     parser.add_argument("--ratios", nargs="+", type=float, default=[4, 8, 16, 32])
@@ -50,26 +51,29 @@ def main(*, train_only=False):
         raise FileExistsError(f"Choose a new NIAH benchmark directory: {output}")
     experiment = read_json(source / "experiment.json")
     if experiment.get("format") != "seco-adapters-v1":
-        raise ValueError("Unsupported SeCo checkpoint format")
+        raise ValueError("Unsupported checkpoint format")
+    model_config = experiment["config"]["model"]
+    check_method(model_config)
+    validate_ratios(model_config, args.ratios)
     checkpoint_file = source / ("artifact.json" if (source / "artifact.json").exists() else "model.safetensors")
     split = "train" if args.eval_train else "test"
     if args.eval_train:
         if not checkpoint_file.is_file():
             raise FileNotFoundError(checkpoint_file)
-        args.prepared_dir = args.prepared_dir or "artifacts/niah/prepared/train_v1"
+        args.prepared_dir = args.prepared_dir or artifact_path("niah", "prepared/train_v1")
         prepared = project_path(args.prepared_dir)
         manifest, manifest_hash, rows, total = load_training_rows(prepared, experiment, args.max_test_samples)
         settings = manifest["arguments"]
         if min(args.ratios) < settings["min_ratio"]:
             raise ValueError("Ratio below training data min_ratio")
         for row in rows:
-            if decoder_tokens(row, args) > settings["max_decoder_tokens"]:
+            if decoder_tokens(row, args, model_config) > settings["max_decoder_tokens"]:
                 raise ValueError(f"Training sample exceeds the prepared decoder budget: {row['id']}")
         seed = manifest["preparation"]["seed"]
         sample_count = len(rows)
         workload = {"training_examples": total, "maximum_encoder_length": max(len(row["input_ids"]) for row in rows)}
     else:
-        args.grid_dir = args.grid_dir or "artifacts/niah/prepared/grid_v1"
+        args.grid_dir = args.grid_dir or artifact_path("niah", "prepared/grid_v1")
         prepared = project_path(args.grid_dir)
         manifest, training_identity = read_test_grid(prepared, experiment, args)
         manifest_hash = sha256_file(prepared / "manifest.json")
@@ -104,6 +108,7 @@ def main(*, train_only=False):
     if world > 1:
         dist.barrier()
     generation_seed = seed if args.seed is None else args.seed
+    set_seed(generation_seed + rank)
     log_progress(f"{worker_label} loading checkpoint {source}")
     model, experiment = load_checkpoint_model(source, model_path=args.model, attention=args.attention)
     if tokenizer_fingerprint(model.tokenizer) != manifest["tokenizer_fingerprint"]:
@@ -116,7 +121,11 @@ def main(*, train_only=False):
         rows = list(iter_jsonl(prepared / "grid.jsonl"))
         validate_test_rows(rows, manifest, training_identity)
     for row in rows:
-        if max(len(row["input_ids"]), decoder_tokens(row, args)) > model.config.max_position_embeddings:
+        decoder_length = decoder_tokens(row, args, model_config)
+        budget = settings["max_decoder_tokens"] if args.eval_train else manifest["grid"]["max_decoder_tokens"]
+        if decoder_length > budget:
+            raise ValueError(f"NIAH sample exceeds the prepared decoder budget: {row['id']}")
+        if max(len(row["input_ids"]), decoder_length) > model.config.max_position_embeddings:
             raise ValueError(f"NIAH sample exceeds model position limit: {row['id']}")
     if not args.eval_train:
         rows = limit_grid_rows(rows, args.max_test_samples, cell_keys=("sequence_length", "depth_percent"))
@@ -133,6 +142,8 @@ def main(*, train_only=False):
         dataset_metadata = {"grid_manifest": manifest, "sample_selection": selection, **metric_identity}
     if rank == 0:
         write_json(output / "benchmark.json", {"task": "niah", "split": split, "arguments": vars(args),
+                   "method": model.method, "model_config": model_config,
+                   **dataset_metadata,
                    "generation": generation, "generation_seed": generation_seed,
                    "checkpoint_identity": sha256_file(checkpoint_file), "world_size": world,
                    "gpu": torch.cuda.get_device_name(device), "attention": model.model_config["attn_implementation"],
@@ -166,6 +177,7 @@ def main(*, train_only=False):
                 for row, prediction in zip(shard[offset:offset + len(predictions)], predictions):
                     result = prediction_metadata(row, args.eval_train)
                     result.update({"prediction": prediction, "ratio": ratio, "status": "ok",
+                                   "memory_tokens_upper_bound": memory_token_bound(model_config, row["context_tokens"], ratio),
                                    "seconds_per_sample": elapsed / len(predictions),
                                    **score_prediction(prediction, row["answer"])})
                     handle.write(json.dumps(result, ensure_ascii=False) + "\n")
@@ -201,9 +213,9 @@ def main(*, train_only=False):
         dist.destroy_process_group()
 
 
-def decoder_tokens(row, args):
+def decoder_tokens(row, args, model_config=None):
     context = row["context_tokens"]
-    centers = min(context, max(2, math.ceil(context / min(args.ratios))))
+    centers = max(memory_token_bound(model_config or {}, context, ratio) for ratio in args.ratios)
     return centers + row["prompt_tokens"] + args.max_new_tokens
 
 

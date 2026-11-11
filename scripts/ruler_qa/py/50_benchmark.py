@@ -7,6 +7,7 @@ import os
 import time
 
 from ruler_bootstrap import require_linux
+from seco.experiment import artifact_path, check_method, memory_token_bound, validate_ratios
 from seco.data import Collator, length_reason, limit_grid_rows, tokenizer_fingerprint
 from seco.generation import add_generation_arguments, generation_options
 from seco.io import fingerprint, iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
@@ -19,9 +20,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--model", help="Relocated base model for an adapter checkpoint")
-    parser.add_argument("--test-dir", default="artifacts/ruler_qa/prepared/test_v1")
+    parser.add_argument("--test-dir", default=artifact_path("ruler_qa", "prepared/test_v1"))
     parser.add_argument("--eval-train", action="store_true", help="Evaluate the checkpoint's training split")
-    parser.add_argument("--prepared-dir", default="artifacts/ruler_qa/prepared/train_v1",
+    parser.add_argument("--prepared-dir", default=artifact_path("ruler_qa", "prepared/train_v1"),
                         help="Prepared training directory used with --eval-train")
     parser.add_argument("--output", required=True)
     parser.add_argument("--ratios", nargs="+", type=float, default=[4, 8, 16, 32])
@@ -63,7 +64,10 @@ def main():
         raise ValueError("Ratio or generation limit is outside the prepared evaluation budget")
     experiment = read_json(checkpoint / "experiment.json")
     if experiment.get("format") != "seco-adapters-v1":
-        raise ValueError("Unsupported SeCo checkpoint format")
+        raise ValueError("Unsupported checkpoint format")
+    model_config = experiment["config"]["model"]
+    check_method(model_config)
+    validate_ratios(model_config, args.ratios)
     if experiment["tokenizer_fingerprint"] != manifest["tokenizer_fingerprint"]:
         raise ValueError("Prepared data and checkpoint tokenizer fingerprints differ")
     if args.eval_train and (experiment.get("task") != "ruler_qa"
@@ -89,6 +93,10 @@ def main():
             ids[row["task"]].append(row["id"])
         manifest = {**manifest, "prepared_test_identity": fingerprint(manifest), "counts": dict(counts),
                     "sample_id_hashes": {task: fingerprint(sorted(task_ids)) for task, task_ids in ids.items()}}
+    for row in rows:
+        memory = max(memory_token_bound(model_config, row["context_tokens"], ratio) for ratio in args.ratios)
+        if memory + row["prompt_tokens"] + args.max_new_tokens > settings["max_decoder_tokens"]:
+            raise ValueError(f"{row['id']}: compressed input exceeds the prepared decoder budget")
     if args.eval_train:
         for row in rows:
             reason = length_reason(
@@ -166,6 +174,7 @@ def main():
                     result = {key: row[key] for key in ("id", "task", "source_id", "question", "answer",
                                                         "target_length", "context_tokens", "prompt_tokens")}
                     yield {**result, "prediction": prediction, "ratio": ratio,
+                           "memory_tokens_upper_bound": memory_token_bound(model_config, row["context_tokens"], ratio),
                            "seconds_per_sample": elapsed / len(texts), **score_prediction(prediction, row["answer"])}
                 offset += len(texts)
                 progress.advance(len(texts))

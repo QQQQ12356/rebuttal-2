@@ -1,6 +1,6 @@
 # 06 配置与脚本变量
 
-相对路径从项目根目录解析。Shell 变量用 `变量=值 bash 脚本.sh` 设置，带空格的值用引号。各 `py` 入口支持 `--help`，例如 `python scripts/ruler_qa/py/50_benchmark.py --help`。
+相对路径从项目根目录解析。Shell 变量用 `变量=值 bash 脚本.sh` 设置，带空格的值用引号。各 `py` 入口支持 `--help`，例如 `python scripts/ruler_qa/py/seco/50_benchmark.py --help`。
 
 ## `configs/ruler_qa/prepare.json`
 
@@ -18,17 +18,17 @@
 | `generation_budget` | `32` | 测试为生成预留的 token 数。`MAX_NEW_TOKENS` 需 ≤ 此值 |
 | `seed` | `42` | 数据候选、干扰文档和顺序的种子。变更后建议另存数据目录 |
 
-## `configs/ruler_qa/train.json`
+## `configs/ruler_qa/seco/train.json`
 
 | 参数 | 默认 | 含义和修改提示 |
 | --- | --- | --- |
-| `model.name_or_path` / `revision` | `Qwen/Qwen3-4B-Instruct-2507` / `main` | 基座与 Hub revision。`MODEL_PATH` 可覆盖前者。用同一 tokenizer 预处理 |
+| `model.name_or_path` / `revision` | `meta-llama/Llama-3.2-1B-Instruct` / `main` | 基座与 Hub revision。`MODEL_PATH` 可覆盖前者。用同一 tokenizer 预处理 |
 | `model.dtype` / `attn_implementation` | `bfloat16` / `sdpa` | 权重精度和注意力实现。可选精度为 `bfloat16`、`float16`、`float32`。后端可选 `eager`、`sdpa`、`flash_attention_2`，最后一项需要额外安装 |
 | `model.similarity_chunk_tokens` | `16` | 压缩阶段的相似度计算分块大小。更小的块降低临时内存，可能增加耗时 |
 | `model.ratio_mode` / `compress_ratio` | `random` / `16` | 随机或固定模式。固定模式使用 `compress_ratio` |
 | `model.random_ratios` | `[4,8,16,32]` | 随机模式从数组等概率抽取一个索引 |
 | `model.lora_r` / `lora_alpha` / `lora_dropout` | `128` / `32` / `0.05` | 编码器和解码器 LoRA 秩、缩放和 dropout |
-| `data.prepared_dir` | `artifacts/ruler_qa/prepared/train_v1` | Python 的训练数据默认目录。Shell 用 `PREPARED_DIR` 传入 |
+| `data.prepared_dir` | `artifacts/seco/Llama-3.2-1B-Instruct/ruler_qa/prepared/train_v1` | Python 的训练数据默认目录。Shell 用 `PREPARED_DIR` 传入 |
 | `per_device_train_batch_size` / `gradient_accumulation_steps` | `1` / `8` | 单设备 microbatch / 每次优化累积步数 |
 | `learning_rate` / `optim` | `1e-5` / `adamw_torch` | 初始学习率和优化器 |
 | `num_train_epochs` / `max_steps` | `1` / `-1` | epoch 与累计步上限。正的 `max_steps` 优先 |
@@ -47,7 +47,7 @@
 
 | 脚本 | 变量 | 默认或作用 |
 | --- | --- | --- |
-| 通用 | `PYTHON_BIN`、`RULER_QA_ROOT` | `python`、`artifacts/ruler_qa`。后者控制数据、日志和实验目录的默认值 |
+| 通用 | `PYTHON_BIN`、`RULER_QA_ROOT` | `python`、`artifacts/seco/Llama-3.2-1B-Instruct/ruler_qa`。后者控制数据、日志和实验目录的默认值 |
 | 通用 | `HF_ENDPOINT`、`HF_HOME`、`OMP_NUM_THREADS` | Hub 地址、缓存目录、每进程默认 CPU 线程数 `4`。Shell 将 `TOKENIZERS_PARALLELISM` 设为 `false` |
 | `00` | `TORCH_INDEX`、`INSTALL_DEEPSPEED` | CUDA wheel 索引和 ZeRO 依赖开关，详见 [环境](01_environment.md) |
 | `01` | `MODEL_ID`、`MODEL_PATH`、`REVISION` | 下载的 Hub ID、本地输出目录、请求的 Hub revision |

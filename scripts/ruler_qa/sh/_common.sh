@@ -6,8 +6,15 @@ PROJECT_ROOT=$(cd -- "$SCRIPT_DIR/../../.." && pwd)
 cd -- "$PROJECT_ROOT"
 
 PYTHON_BIN="${PYTHON_BIN:-python}"
-RULER_QA_ROOT="${RULER_QA_ROOT:-artifacts/ruler_qa}"
-DEFAULT_MODEL_PATH=artifacts/models/Qwen3-4B-Instruct-2507
+METHOD="${COMPRESSION_METHOD:-seco}"
+BACKBONE="${BACKBONE:-Llama-3.2-1B-Instruct}"
+EXPERIMENT_ROOT="${ARTIFACT_ROOT:-artifacts}/$METHOD/$BACKBONE"
+RULER_QA_ROOT="${RULER_QA_ROOT:-$EXPERIMENT_ROOT/ruler_qa}"
+DEFAULT_MODEL_PATH="$EXPERIMENT_ROOT/model"
+PY_ENTRY_DIR="scripts/ruler_qa/py"
+if [[ -n "${COMPRESSION_METHOD:-}" ]]; then
+    PY_ENTRY_DIR="$PY_ENTRY_DIR/$METHOD"
+fi
 export HF_ENDPOINT="${HF_ENDPOINT:-https://huggingface.co}"
 export HF_HOME="${HF_HOME:-$PROJECT_ROOT/artifacts/hf_cache}"
 export TOKENIZERS_PARALLELISM=false

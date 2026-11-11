@@ -9,7 +9,7 @@ NODE_RANK="${NODE_RANK:-0}"
 MASTER_ADDR="${MASTER_ADDR:-127.0.0.1}"
 MASTER_PORT="${MASTER_PORT:-29610}"
 BACKEND="${BACKEND:-ddp}"
-CONFIG="${CONFIG:-configs/ruler_qa/train.json}"
+CONFIG="${CONFIG:-configs/ruler_qa/$METHOD/train.json}"
 PREPARED_DIR="${PREPARED_DIR:-$RULER_QA_ROOT/prepared/train_v1}"
 RESUME="${RESUME:-}"
 MAX_STEPS="${MAX_STEPS:-}"
@@ -26,13 +26,13 @@ fi
 options=(--config "$CONFIG" --prepared-dir "$PREPARED_DIR" --output "$RUN_DIR" --backend "$BACKEND")
 if [[ -n "${MODEL_PATH:-}" ]]; then
     options+=(--model "$MODEL_PATH")
-elif [[ "$CONFIG" == configs/ruler_qa/train.json && -d "$DEFAULT_MODEL_PATH" ]]; then
+elif [[ -d "$DEFAULT_MODEL_PATH" ]]; then
     options+=(--model "$DEFAULT_MODEL_PATH")
 fi
 [[ -n "$RESUME" ]] && options+=(--resume "$RESUME")
 [[ -n "$MAX_STEPS" ]] && options+=(--max-steps "$MAX_STEPS")
 if [[ "$PLAN_ONLY" == 1 ]]; then
-    WORLD_SIZE=$((NNODES * NPROC_PER_NODE)) "$PYTHON_BIN" scripts/ruler_qa/py/30_train.py \
+    WORLD_SIZE=$((NNODES * NPROC_PER_NODE)) "$PYTHON_BIN" "$PY_ENTRY_DIR/30_train.py" \
         "${options[@]}" --plan-only "$@"
     exit 0
 fi
@@ -41,5 +41,5 @@ mkdir -p "$RULER_QA_ROOT/logs"
 LOG_FILE="$RULER_QA_ROOT/logs/train_$(timestamp)_node${NODE_RANK}_${RANDOM}.log"
 "$PYTHON_BIN" -m torch.distributed.run --nnodes "$NNODES" --node_rank "$NODE_RANK" \
     --nproc_per_node "$NPROC_PER_NODE" --master_addr "$MASTER_ADDR" --master_port "$MASTER_PORT" \
-    scripts/ruler_qa/py/30_train.py "${options[@]}" "$@" 2>&1 | tee "$LOG_FILE"
+    "$PY_ENTRY_DIR/30_train.py" "${options[@]}" "$@" 2>&1 | tee "$LOG_FILE"
 printf 'RULER QA run: %s\nLog: %s\n' "$RUN_DIR" "$LOG_FILE"

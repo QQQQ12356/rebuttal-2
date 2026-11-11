@@ -26,13 +26,13 @@ PLAN_ONLY="${PLAN_ONLY:-0}"
 
 case "$EVAL_TRAIN" in
     0)
-        entry=scripts/niah/py/50_benchmark.py
+        entry="$PY_ENTRY_DIR/50_benchmark.py"
         dataset_options=(--grid-dir "$GRID_DIR")
         run_prefix=niah
         log_prefix=benchmark
         ;;
     1)
-        entry=scripts/niah/py/51_benchmark_train.py
+        entry="$PY_ENTRY_DIR/51_benchmark_train.py"
         dataset_options=(--eval-train --prepared-dir "$PREPARED_DIR")
         run_prefix=niah_train
         log_prefix=train_benchmark

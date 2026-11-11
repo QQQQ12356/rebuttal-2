@@ -3,19 +3,19 @@
 独立入口只处理 `configs/niah/prepare_train.json` 声明的源，不读取 NaturalQA 等数据。默认目标为 synthetic 4000 + Cogito Bits 2000 + Cogito Bind 2000。候选不足时记录实际数并警告，可用 strict_count 强制配额。
 
 ```bash
-bash scripts/niah/sh/20_prepare_train.sh
+bash scripts/niah/sh/seco/20_prepare_train.sh
 
 # 快速检查样本：仍只在 Linux 执行，并使用新输出目录。
-PREPARED_DIR=artifacts/niah/prepared/train_small \
+PREPARED_DIR=artifacts/seco/Llama-3.2-1B-Instruct/niah/prepared/train_small \
 SYNTHETIC_SAMPLES=32 SUPERVISED_SAMPLES=16 \
-    bash scripts/niah/sh/20_prepare_train.sh
+    bash scripts/niah/sh/seco/20_prepare_train.sh
 ```
 
 ## 1. 处理规则
 
 1. 读取 heldout_corpora 的完整正文哈希集合，排除训练背景中的精确归一化重复文档。
 2. synthetic 从 PG19 train 的已分词正文池随机取窗口，在随机深度插入合成针，长度从数组抽取。UUID 和 passkey 样本在问题中给出查询键，答案为对应值。custom 用英文推荐句作针，问题询问推荐地点，答案是针中的地点短语。参见 [10 自然语言短答案](10_custom_short_answers.md)。
-3. supervised 读取两个源的 context/query/answer 文本，丢弃其他 tokenizer 的 IDs，使用本次 Qwen tokenizer 重新编码。
+3. supervised 读取两个源的 context/query/answer 文本，丢弃其他 tokenizer 的 IDs，使用本次 Llama tokenizer 重新编码。
 4. 按 context/prompt 内容和 ID 去重，按输入、答案与压缩后解码预算过滤；已经含针的样本不截尾，避免删掉监督证据。
 5. 对每源合格候选做独立固定种子的 reservoir sampling，再全局打乱，保存 train.jsonl 和完整 manifest。
 
@@ -45,7 +45,7 @@ SYNTHETIC_SAMPLES=32 SUPERVISED_SAMPLES=16 \
 | supervised[].source | cogito_bits / cogito_bind | 每个监督源的 raw 文件名 |
 | supervised[].samples | 各 2000 | 合格样本目标，0 全部；删掉数组项可禁用该源 |
 
-`K=min(L_context,max(2,ceil(L_context/min_ratio)))`。筛选要求 `L_context+L_prompt<=max_input_tokens`、`L_answer<=max_answer_tokens`、`K+L_prompt+L_answer<=max_decoder_tokens`。源数据的 seq_len 字段来自其他 tokenizer，只作原始元数据，不能代替 Qwen 重新计算的长度。
+`K=min(L_context,max(2,ceil(L_context/min_ratio)))`。筛选要求 `L_context+L_prompt<=max_input_tokens`、`L_answer<=max_answer_tokens`、`K+L_prompt+L_answer<=max_decoder_tokens`。源数据的 seq_len 字段来自其他 tokenizer，只作原始元数据，不能代替 Llama 重新计算的长度。
 
 Python 入口参数：`--config` 选择上述配置；`--raw-dir/--output` 选独立目录；`--model/--revision` 选 tokenizer；`--synthetic-samples` 覆盖合成目标数，0 禁用；`--synthetic-tasks custom` 覆盖合成任务列表；`--supervised-samples` 覆盖每个监督源的配额，0 使用全部合格样本。Shell 中相应变量说明见 [07](07_parameters.md)。
 
@@ -55,7 +55,7 @@ Python 入口参数：`--config` 选择上述配置；`--raw-dir/--output` 选�
 
 保留 checkpoint 对应的这两个文件，以便后续按 [09 训练集评测](09_train_benchmark.md) 在原样本上生成并计分。该入口会核对 checkpoint 保存的 manifest SHA-256，以及 manifest 记录的 `train.jsonl` SHA-256。
 
-统计含 scanned、eligible、selected、duplicates、heldout_overlap、long_input、long_answer、long_decoder 等；零值可不出现。没有合格样本会报错。默认长度下较长的 Cogito 样本可能因 Qwen token 数超过上限被过滤，不能直接承诺每源最终 2000 条。
+统计含 scanned、eligible、selected、duplicates、heldout_overlap、long_input、long_answer、long_decoder 等；零值可不出现。没有合格样本会报错。默认长度下较长的 Cogito 样本可能因 Llama token 数超过上限被过滤，不能直接承诺每源最终 2000 条。
 
 扩大样本数时同时扩大 raw 候选池和 synthetic.candidates。降低压缩比下限时同步降低 limits.min_ratio，并重新预处理。增大长度时同时核对训练 JSON、解码预算、模型位置上限与实际显存。缩小背景池过度可能造成背景窗口重复，应在论文记录池大小、每篇上限、源前缀和种子。
 

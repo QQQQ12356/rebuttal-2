@@ -2,9 +2,9 @@
 set -euo pipefail
 source "$(dirname -- "${BASH_SOURCE[0]}")/_common.sh"
 
-MODEL_PATH="${MODEL_PATH:-artifacts/models/Qwen3-4B-Instruct-2507}"
-RAW_DIR="${RAW_DIR:-artifacts/raw}"
-PREPARED_DIR="${PREPARED_DIR:-artifacts/prepared/default}"  # Must be a new directory each time.
+MODEL_PATH="${MODEL_PATH:-$DEFAULT_MODEL_PATH}"
+RAW_DIR="${RAW_DIR:-$BENCHMARK_ROOT/raw}"
+PREPARED_DIR="${PREPARED_DIR:-$BENCHMARK_ROOT/prepared/default}"  # Must be a new directory each time.
 DATASETS=(naturalqa 2wikimqa hotpotqa narrativeqa multinews) # Training datasets, in this order.
 TRAIN_SAMPLES=(5000 5000 5000 5000 5000)                   # Eligible samples per dataset; 0 = all.
 TEST_SAMPLES="${TEST_SAMPLES:-500}"                      # Eligible examples per Twwilght benchmark; 0 = all.
@@ -19,7 +19,7 @@ SEED="${SEED:-42}"
 STRICT_COUNT="${STRICT_COUNT:-0}"                        # 1 fails when eligible examples are insufficient.
 extra=()
 [[ "$STRICT_COUNT" == 1 ]] && extra+=(--strict-count)
-"$PYTHON_BIN" scripts/benchmark/py/20_prepare_data.py \
+"$PYTHON_BIN" "$PY_ENTRY_DIR/20_prepare_data.py" \
     --model "$MODEL_PATH" --raw-dir "$RAW_DIR" --output "$PREPARED_DIR" \
     --datasets "${DATASETS[@]}" --train-samples "${TRAIN_SAMPLES[@]}" --test-samples "$TEST_SAMPLES" \
     --candidate-limit "$CANDIDATE_LIMIT" --max-input-tokens "$MAX_INPUT_TOKENS" \

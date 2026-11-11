@@ -13,8 +13,8 @@ NIAH Shell 位于 scripts/niah/sh，Python 位于 scripts/niah/py。标量和评
 | 同上 | TOKENIZERS_PARALLELISM / OMP_NUM_THREADS | false / 4；控制线程争用 |
 | 00_setup_environment.sh | TORCH_INDEX | CUDA12.6 wheel 源 |
 | 同上 | INSTALL_DEEPSPEED | 1；0 仅普通 DDP |
-| 01_download_model.sh | MODEL_ID | Qwen/Qwen3-4B-Instruct-2507 |
-| 同上 | MODEL_PATH | artifacts/models/Qwen3-4B-Instruct-2507，可复用既有模型 |
+| 01_download_model.sh | MODEL_ID | meta-llama/Llama-3.2-1B-Instruct |
+| 同上 | MODEL_PATH | artifacts/seco/Llama-3.2-1B-Instruct/model，可复用既有模型 |
 | 同上 | REVISION | main；推荐固定 commit |
 | 10_download_data.sh | REGISTRY | configs/niah/sources.json，角色与 split 在此修改 |
 | 同上 | RAW_DIR | NIAH_ROOT/raw |
@@ -49,9 +49,9 @@ NIAH Shell 位于 scripts/niah/sh，Python 位于 scripts/niah/py。标量和评
 | NNODES / NODE_RANK | 1 / 0 | 多节点数量与当前节点编号 |
 | MASTER_ADDR / MASTER_PORT | 127.0.0.1 / 29600 | 静态 rendezvous 地址/端口；多节点改为主节点可访问地址 |
 | BACKEND | zero2 | ddp/zero2/zero2_cpu/zero3_cpu |
-| CONFIG | configs/niah/train.json | 独立训练 JSON |
+| CONFIG | configs/niah/seco/train.json | 独立训练 JSON |
 | MODEL_PATH / PREPARED_DIR | 默认模型 / NIAH_ROOT/prepared/train_v1 | 覆盖 JSON 的模型/数据路径 |
-| RUN_NAME | niah_qwen3_4b | 新实验的人类标签 |
+| RUN_NAME | niah | 新实验的人类标签 |
 | RUN_DIR | 自动 UTC 时间+随机后缀 | 显式新输出目录；多节点所有节点需同一个共享目录 |
 | RESUME | 空 | native checkpoint-N；非空时 RUN_DIR 默认取其父目录 |
 | MAX_STEPS | 空 | 空用配置；正数是累计 optimizer-step 目标 |

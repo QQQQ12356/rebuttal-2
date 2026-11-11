@@ -6,6 +6,7 @@ import random
 from tempfile import TemporaryDirectory
 
 from ruler_bootstrap import require_linux
+from seco.experiment import artifact_path, default_model_path
 from seco.data import tokenizer_fingerprint
 from seco.io import fingerprint, model_source, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.ruler_qa.data import PROMPT_STYLES, TASKS, build_rows, read_questions, sample_train, validate_settings
@@ -16,9 +17,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--split", choices=("train", "test"), required=True)
     parser.add_argument("--config", default="configs/ruler_qa/prepare.json")
-    parser.add_argument("--raw-dir", default="artifacts/ruler_qa/raw")
+    parser.add_argument("--raw-dir", default=artifact_path("ruler_qa", "raw"))
     parser.add_argument("--output", required=True)
-    parser.add_argument("--model", default="Qwen/Qwen3-4B-Instruct-2507")
+    parser.add_argument("--model", default=default_model_path())
     parser.add_argument("--revision", default="main")
     parser.add_argument("--prompt-style", choices=PROMPT_STYLES, default="raw",
                         help="raw: append the question only; legacy: add the instruction and QA markers")

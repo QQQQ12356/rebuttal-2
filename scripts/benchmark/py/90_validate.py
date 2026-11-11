@@ -5,12 +5,13 @@ from _bootstrap import ROOT
 
 
 def main():
-    files = [path for folder in ("seco", "scripts/benchmark/py", "scripts/niah/py", "tests") for path in (ROOT / folder).rglob("*.py")]
+    files = [path for folder in ("seco", "comi", "icae", "ram", "scripts", "tests")
+             for path in (ROOT / folder).rglob("*.py")]
     for path in files:
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     for path in (ROOT / "configs").rglob("*.json"):
         json.loads(path.read_text(encoding="utf-8"))
-    for path in (ROOT / "scripts/benchmark/sh").glob("*.sh"):
+    for path in (ROOT / "scripts").rglob("*.sh"):
         if b"\r" in path.read_bytes():
             raise ValueError(f"Shell file contains CRLF: {path}")
     original = ast.parse((ROOT / "legacy/py/modeling_seco_cluster.py").read_text(encoding="utf-8"))
@@ -22,12 +23,19 @@ def main():
 
     if methods(original) != methods(current):
         raise ValueError("SeCo compression methods differ from the original baseline")
-    for path in (ROOT / "scripts/benchmark/sh").glob("[0-9]*.sh"):
-        if not (ROOT / "scripts/benchmark/py" / f"{path.stem}.py").exists():
-            # Setup calls pip plus the separate environment inspector; validation
-            # wraps the static checker and Linux unittest suite.
-            if path.stem != "00_setup_environment":
-                raise ValueError(f"Missing matching Python command: {path}")
+    for task in ("benchmark", "niah", "ruler_qa"):
+        scripts = ROOT / "scripts" / task
+        for method in ("seco", "comi", "icae", "ram"):
+            config = json.loads((ROOT / "configs" / task / method / "train.json").read_text(encoding="utf-8"))
+            if config["model"]["method"] != method:
+                raise ValueError(f"Method mismatch in {task}/{method} training config")
+            for entry in (scripts / "sh" / method).glob("[0-9]*.sh"):
+                if not (scripts / "sh" / entry.name).is_file():
+                    raise ValueError(f"Missing shared shell target: {entry}")
+                if entry.stem != "00_setup_environment" and not (
+                    scripts / "py" / method / f"{entry.stem}.py"
+                ).is_file():
+                    raise ValueError(f"Missing matching Python command: {entry}")
     print(f"Static checks passed: {len(files)} Python files; JSON, LF shell files and original compression AST")
 
 

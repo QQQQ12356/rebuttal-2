@@ -42,6 +42,6 @@ fi
 [[ -n "$GENERATION_BUDGET" ]] && overrides+=(--generation-budget "$GENERATION_BUDGET")
 [[ -n "$SEED" ]] && overrides+=(--seed "$SEED")
 
-"$PYTHON_BIN" scripts/ruler_qa/py/20_prepare_data.py --split "$SPLIT" --config "$PREPARE_CONFIG" \
+"$PYTHON_BIN" "$PY_ENTRY_DIR/20_prepare_data.py" --split "$SPLIT" --config "$PREPARE_CONFIG" \
     --raw-dir "$RAW_DIR" --output "$PREPARED_DIR" --model "$MODEL_PATH" --revision "$REVISION" \
     --prompt-style "$PROMPT_STYLE" "${overrides[@]}" "$@"

@@ -3,6 +3,7 @@ import argparse
 import random
 
 from niah_bootstrap import require_linux
+from seco.experiment import artifact_path, default_model_path
 from seco.data import length_reason, tokenizer_fingerprint
 from seco.io import fingerprint, model_source, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.niah.config import validate_grid
@@ -13,9 +14,9 @@ def main():
     require_linux()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="configs/niah/grid.json")
-    parser.add_argument("--raw-dir", default="artifacts/niah/raw")
-    parser.add_argument("--output", default="artifacts/niah/prepared/grid_v1")
-    parser.add_argument("--model", default="artifacts/models/Qwen3-4B-Instruct-2507")
+    parser.add_argument("--raw-dir", default=artifact_path("niah", "raw"))
+    parser.add_argument("--output", default=artifact_path("niah", "prepared/grid_v1"))
+    parser.add_argument("--model", default=default_model_path())
     parser.add_argument("--revision", default="main")
     parser.add_argument("--task", choices=("uuid", "passkey", "custom"),
                         help="Override JSON task; custom uses the test template unless JSON supplies a fixed custom triple")
@@ -42,7 +43,7 @@ def main():
                     max_tokens=config["max_corpus_tokens"], per_document_tokens=config["per_document_tokens"])
     if not config["repeat_haystack"] and len(pool.tokens) < max(config["lengths"]):
         raise ValueError("Held-out corpus too short for largest grid length; add text or explicitly enable repeat_haystack")
-    train_manifest_path = project_path(args.training_manifest) if args.training_manifest else project_path("artifacts/niah/prepared/train_v1/manifest.json")
+    train_manifest_path = project_path(args.training_manifest) if args.training_manifest else project_path(artifact_path("niah", "prepared/train_v1/manifest.json"))
     train_manifest = read_json(train_manifest_path) if train_manifest_path.exists() else None
     if args.training_manifest and train_manifest is None:
         raise FileNotFoundError(train_manifest_path)

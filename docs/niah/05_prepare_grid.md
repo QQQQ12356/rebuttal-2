@@ -3,11 +3,11 @@
 测试网格独立于训练数据生成，不对监督训练源的题目进行长度/深度重标注。默认在 held-out Paul Graham 背景中插入新 UUID；每个 trial 使用新答案，减少固定事实被模型记住而造成的误判。
 
 ```bash
-bash scripts/niah/sh/21_prepare_grid.sh
+bash scripts/niah/sh/seco/21_prepare_grid.sh
 
 # 使用与参考图接近的 10×10 长度/深度轴，另开新 grid 目录。
-GRID_CONFIG=configs/niah/grid_128k.json GRID_DIR=artifacts/niah/prepared/grid_128k \
-    bash scripts/niah/sh/21_prepare_grid.sh
+GRID_CONFIG=configs/niah/grid_128k.json GRID_DIR=artifacts/seco/Llama-3.2-1B-Instruct/niah/prepared/grid_128k \
+    bash scripts/niah/sh/seco/21_prepare_grid.sh
 ```
 
 ## 1. 长度与深度的精确定义
@@ -60,6 +60,6 @@ GRID_CONFIG=configs/niah/grid_128k.json GRID_DIR=artifacts/niah/prepared/grid_12
 
 输出包括 `grid.jsonl` 和 `manifest.json`。manifest 记录完整网格、实际数量、输入/深度定义、tokenizer、背景源 commit/hash、文档区间、网格文件哈希。
 
-`--training-manifest` 可显式传入训练 manifest；省略时若默认 `artifacts/niah/prepared/train_v1/manifest.json` 存在会自动检查，否则明确记录没有训练 manifest guard。自定义 PREPARED_DIR 时应设置 TRAINING_MANIFEST 指向对应版本。构建时检查训练背景/已选答案哈希，测试时还根据当前 checkpoint 内保存的训练身份重新检查，不依赖文件名判断无重复。
+`--training-manifest` 可显式传入训练 manifest；省略时若默认 `artifacts/seco/Llama-3.2-1B-Instruct/niah/prepared/train_v1/manifest.json` 存在会自动检查，否则明确记录没有训练 manifest guard。自定义 PREPARED_DIR 时应设置 TRAINING_MANIFEST 指向对应版本。构建时检查训练背景/已选答案哈希，测试时还根据当前 checkpoint 内保存的训练身份重新检查，不依赖文件名判断无重复。
 
 该网格也可用于旧 QA 训练得到的 SeCo checkpoint 做基线；只要 tokenizer 一致并满足位置/解码预算即可。对于不含 NIAH 训练身份的旧模型，不补造其去污染保证。

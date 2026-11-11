@@ -5,6 +5,7 @@ from itertools import islice
 import random
 
 from niah_bootstrap import require_linux
+from seco.experiment import artifact_path, default_model_path
 from seco.data import length_reason, reservoir_add, tokenizer_fingerprint
 from seco.io import fingerprint, iter_jsonl, model_source, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.niah.config import positive, validate_limits
@@ -15,9 +16,9 @@ def main():
     require_linux()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="configs/niah/prepare_train.json")
-    parser.add_argument("--raw-dir", default="artifacts/niah/raw")
-    parser.add_argument("--output", default="artifacts/niah/prepared/train_v1")
-    parser.add_argument("--model", default="artifacts/models/Qwen3-4B-Instruct-2507")
+    parser.add_argument("--raw-dir", default=artifact_path("niah", "raw"))
+    parser.add_argument("--output", default=artifact_path("niah", "prepared/train_v1"))
+    parser.add_argument("--model", default=default_model_path())
     parser.add_argument("--revision", default="main")
     parser.add_argument("--synthetic-samples", type=int, help="Override target count; 0 disables synthetic training")
     parser.add_argument("--synthetic-tasks", nargs="+", choices=("uuid", "passkey", "custom"),

@@ -3,17 +3,17 @@
 Excel 导出在 Linux 执行，不需要桌面 Excel，也不加载模型。安装 `requirements-tools.txt` 后运行：
 
 ```bash
-bash scripts/benchmark/sh/70_export_excel.sh
-EXCEL_PATH=artifacts/reports/paper_table.xlsx bash scripts/benchmark/sh/70_export_excel.sh
+bash scripts/benchmark/sh/seco/70_export_excel.sh
+EXCEL_PATH=artifacts/seco/Llama-3.2-1B-Instruct/benchmark/reports/paper_table.xlsx bash scripts/benchmark/sh/seco/70_export_excel.sh
 
-python scripts/benchmark/py/70_export_excel.py \
-    --inputs 'artifacts/benchmarks/**/metrics.json' \
-    --output artifacts/reports/all_runs.xlsx --include-details
+python scripts/benchmark/py/seco/70_export_excel.py \
+    --inputs 'artifacts/seco/Llama-3.2-1B-Instruct/benchmark/benchmarks/**/metrics.json' \
+    --output artifacts/seco/Llama-3.2-1B-Instruct/benchmark/reports/all_runs.xlsx --include-details
 ```
 
 | 参数/变量 | 默认 | 作用 |
 | --- | --- | --- |
-| `--inputs` / Shell INPUTS | artifacts/benchmarks/**/metrics.json | 一个或多个指标文件/递归 glob；必须加引号交给 Python 展开 |
+| `--inputs` / Shell INPUTS | artifacts/seco/Llama-3.2-1B-Instruct/benchmark/benchmarks/**/metrics.json | 一个或多个指标文件/递归 glob；必须加引号交给 Python 展开 |
 | `--output` / EXCEL_PATH | Shell 自动生成唯一文件名 | 新 xlsx 路径，已有文件拒绝覆盖 |
 | `--include-details` / INCLUDE_DETAILS | Python 关闭，Shell 为 1 | 从每个指标文件旁的 predictions.jsonl 读取原始预测内容 |
 

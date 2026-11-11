@@ -5,7 +5,7 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/_common.sh"
 GRID_CONFIG="${GRID_CONFIG:-configs/niah/grid.json}"          # Lengths/depths/trials/task/budgets; optional grid_128k.json.
 GRID_TASK="${GRID_TASK:-}"                                   # custom, uuid, or passkey; empty uses JSON.
 GRID_REPEATS="${GRID_REPEATS:-}"                             # Positive trial count; empty uses JSON.
-MODEL_PATH="${MODEL_PATH:-artifacts/models/Qwen3-4B-Instruct-2507}"
+MODEL_PATH="${MODEL_PATH:-$DEFAULT_MODEL_PATH}"
 RAW_DIR="${RAW_DIR:-$NIAH_ROOT/raw}"
 GRID_DIR="${GRID_DIR:-$NIAH_ROOT/prepared/grid_v1}"           # Test-only fixed grid, separate from train data.
 TRAINING_MANIFEST="${TRAINING_MANIFEST:-}"                  # Optional explicit train manifest to check overlap.
@@ -16,5 +16,5 @@ extra=()
 [[ -n "$GRID_TASK" ]] && extra+=(--task "$GRID_TASK")
 [[ -n "$GRID_REPEATS" ]] && extra+=(--repeats "$GRID_REPEATS")
 [[ -n "$TRAINING_MANIFEST" ]] && extra+=(--training-manifest "$TRAINING_MANIFEST")
-"$PYTHON_BIN" scripts/niah/py/21_prepare_grid.py --config "$GRID_CONFIG" \
+"$PYTHON_BIN" "$PY_ENTRY_DIR/21_prepare_grid.py" --config "$GRID_CONFIG" \
     --model "$MODEL_PATH" --raw-dir "$RAW_DIR" --output "$GRID_DIR" "${extra[@]}" "$@"

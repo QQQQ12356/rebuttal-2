@@ -3,6 +3,7 @@ import argparse
 from _bootstrap import require_linux
 from seco.config import load_config
 from seco.data import tokenizer_fingerprint
+from seco.experiment import training_config
 from seco.io import fingerprint, model_source, project_path, sha256_file, write_json
 
 
@@ -10,8 +11,8 @@ def main():
     require_linux()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", required=True, help="Original unmerged dual-LoRA model.safetensors")
-    parser.add_argument("--config", default="configs/benchmark/train.json", help="Must match original model and LoRA settings")
-    parser.add_argument("--model", help="Original base model path; do not use the default Qwen for Llama checkpoints")
+    parser.add_argument("--config", default=training_config("benchmark"), help="Must match original model and LoRA settings")
+    parser.add_argument("--model", help="Original base model path; must match the imported checkpoint")
     parser.add_argument("--output", required=True, help="New adapter directory; inference only, no optimizer restore")
     args = parser.parse_args()
     import torch
@@ -20,6 +21,8 @@ def main():
     from seco.model import SECO
 
     config = load_config(project_path(args.config))
+    if config["model"].get("method", "seco") != "seco":
+        raise ValueError("Legacy checkpoint import supports SeCo only")
     if args.model:
         config["model"]["name_or_path"] = model_source(args.model)
     source, output = project_path(args.source), project_path(args.output)

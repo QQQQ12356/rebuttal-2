@@ -2,12 +2,12 @@
 
 ## 1. 默认模型
 
-默认仓库为 [Qwen/Qwen3-4B-Instruct-2507](https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507)，官方说明该版本仅支持非思考模式。代码使用完整仓库名，避免把不存在的简称当作 Hub ID。
+默认仓库为 [meta-llama/Llama-3.2-1B-Instruct](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)。代码使用完整仓库名，避免把不存在的简称当作 Hub ID。
 
 ```bash
-bash scripts/benchmark/sh/01_download_model.sh
+bash scripts/benchmark/sh/seco/01_download_model.sh
 # 指定 commit 和保存位置：
-REVISION=你的commit MODEL_PATH=/models/qwen3_4b bash scripts/benchmark/sh/01_download_model.sh
+REVISION=你的commit MODEL_PATH=/models/llama32_1b bash scripts/benchmark/sh/seco/01_download_model.sh
 ```
 
 `01_download_model.py` 将 `main` 解析为 commit SHA 后下载模型、tokenizer 与配置，保存 `download.json`。切换模型时同时修改预处理与训练的 `MODEL_PATH`，重新生成 prepared 数据。训练保存远程模型实际加载到的 commit；本地模型应保留下载元数据并保持目录不可变。
@@ -33,23 +33,23 @@ REVISION=你的commit MODEL_PATH=/models/qwen3_4b bash scripts/benchmark/sh/01_d
 ## 3. 下载命令与容量控制
 
 ```bash
-bash scripts/benchmark/sh/10_download_data.sh
-ROLE=benchmark bash scripts/benchmark/sh/10_download_data.sh
-ROLE=training TRAIN_LIMIT=10000 bash scripts/benchmark/sh/10_download_data.sh
+bash scripts/benchmark/sh/seco/10_download_data.sh
+ROLE=benchmark bash scripts/benchmark/sh/seco/10_download_data.sh
+ROLE=training TRAIN_LIMIT=10000 bash scripts/benchmark/sh/seco/10_download_data.sh
 
 # 单独下载一个训练源。
-ROLE=training bash scripts/benchmark/sh/10_download_data.sh --datasets narrativeqa
+ROLE=training bash scripts/benchmark/sh/seco/10_download_data.sh --datasets narrativeqa
 ```
 
 | 参数 | 默认 | 含义 |
 | --- | --- | --- |
 | `--registry` | configs/benchmark/datasets.json | 注册表路径，相对路径基于项目根 |
-| `--output` | artifacts/raw | 下载输出根目录 |
+| `--output` | artifacts/seco/Llama-3.2-1B-Instruct/benchmark/raw | 下载输出根目录 |
 | `--role` | all | all / training / benchmark |
 | `--datasets` | 当前 role 的全部源 | canonical 名称数组；all 模式下须在两个 role 中都存在 |
 | `--train-limit` | 30000 | 每个训练源读取前 N 条原始行；0 读取完整 split |
 | `--download-mode` | local | 先完整下载分片，再本地解码；stream 保留旧远端流式路径 |
-| `--source-cache` | artifacts/source_cache | 分片缓存根目录，保存完整文件及可续传的 .incomplete |
+| `--source-cache` | artifacts/seco/Llama-3.2-1B-Instruct/benchmark/source_cache | 分片缓存根目录，保存完整文件及可续传的 .incomplete |
 | `--download-attempts` / `--retry-delay` | 6 / 2 | 每文件/元数据调用的外层尝试次数>=1；初始退避0–30秒，后续退避最大30秒；SDK内部仍可能重试 |
 | `--metadata-timeout` | 60 | dataset-info API 超时，单位秒，范围0<值<=3600；独立于文件下载/ETag超时 |
 | `--row-batch-size` | 16 | 本地 Parquet 解码批大小>=1，禁用 Arrow 后台读取线程 |
@@ -64,10 +64,10 @@ SOURCE_CACHE 通过 Hub SDK 的 cache_dir 显式设置，不是 HF_HOME 的别�
 下载每个源生成：
 
 ```text
-artifacts/raw/training/naturalqa.jsonl
-artifacts/raw/training/naturalqa.source.json
-artifacts/raw/benchmark/naturalqa.jsonl
-artifacts/raw/benchmark/naturalqa.source.json
+artifacts/seco/Llama-3.2-1B-Instruct/benchmark/raw/training/naturalqa.jsonl
+artifacts/seco/Llama-3.2-1B-Instruct/benchmark/raw/training/naturalqa.source.json
+artifacts/seco/Llama-3.2-1B-Instruct/benchmark/raw/benchmark/naturalqa.jsonl
+artifacts/seco/Llama-3.2-1B-Instruct/benchmark/raw/benchmark/naturalqa.source.json
 ```
 
 `.source.json` 记录 repo/config/split、解析后的 commit、行数与文件 SHA256。相同身份且哈希匹配会复用；身份变化或不完整文件会拒绝覆盖，请换 `RAW_DIR`。不要手动修改现有 raw 文件后继续使用原 manifest。
@@ -77,7 +77,7 @@ artifacts/raw/benchmark/naturalqa.source.json
 ## 4. 镜像与本地原始文件
 
 ```bash
-HF_ENDPOINT=https://hf-mirror.com bash scripts/benchmark/sh/10_download_data.sh
+HF_ENDPOINT=https://hf-mirror.com bash scripts/benchmark/sh/seco/10_download_data.sh
 ```
 
 若 MultiNews 转换分支在当前 endpoint 不可用，可以切回官方 endpoint；也可在 Linux 自行从合法来源准备 JSONL，然后放入 `RAW_DIR/training/multinews.jsonl`，每行包含 `document` 和 `summary`。其他源同理，文件名与 schema 必须符合注册名称。没有 `.source.json` 的本地输入会明确记为 `local_file` 加实际 SHA256，不伪造 Hub 来源。
@@ -88,7 +88,7 @@ HF_ENDPOINT=https://hf-mirror.com bash scripts/benchmark/sh/10_download_data.sh
 
 该错误表示 HTTP 响应未接收完整；把 timeout 增加到1200秒不能修复已断开的连接。下载入口默认改用 local 模式，默认关闭 Xet/hf_transfer，使用有 .incomplete 文件的 HTTP 下载路径；可通过环境变量显式调整。此改动不涉及模型、数据 split、抽样范围或压缩方法。
 
-下面的传输环境默认值由 scripts/benchmark/sh/10_download_data.sh 设置；直接运行 Python 时应显式 export。先停止旧下载进程，再在 Linux 项目根更新代码；有本地修改时先自行保留，git pull --ff-only 会在无法快进时停止，不覆盖本地变更。
+下面的传输环境默认值由 scripts/benchmark/sh/seco/10_download_data.sh 设置；直接运行 Python 时应显式 export。先停止旧下载进程，再在 Linux 项目根更新代码；有本地修改时先自行保留，git pull --ff-only 会在无法快进时停止，不覆盖本地变更。
 
 ```bash
 git pull --ff-only origin main
@@ -102,11 +102,11 @@ export HF_HUB_ENABLE_HF_TRANSFER=0
 # 更新代码后先做小样本验证，使用独立输出目录，避免与正式30000条身份冲突。
 PROBE_DIR="artifacts/raw_probe_local_$(date +%Y%m%d_%H%M%S)"
 ROLE=training TRAIN_LIMIT=20 RAW_DIR="$PROBE_DIR" DOWNLOAD_MODE=local \
-bash scripts/benchmark/sh/10_download_data.sh --datasets naturalqa
+bash scripts/benchmark/sh/seco/10_download_data.sh --datasets naturalqa
 
 # 验证成功后使用原始正式配额；共享分片缓存，无需重新下载已完成分片。
-ROLE=all TRAIN_LIMIT=30000 RAW_DIR=artifacts/raw DOWNLOAD_MODE=local \
-bash scripts/benchmark/sh/10_download_data.sh
+ROLE=all TRAIN_LIMIT=30000 RAW_DIR=artifacts/seco/Llama-3.2-1B-Instruct/benchmark/raw DOWNLOAD_MODE=local \
+bash scripts/benchmark/sh/seco/10_download_data.sh
 ```
 
 探针目录仅用于验证，不会自动合并进正式 raw。正式命令显式恢复 role/limit/output，避免继承之前为探针设置的环境值。若正式路径已有同源同配额且哈希匹配的完整 JSONL，会显示 reuse；只有数据身份不变时才复用。

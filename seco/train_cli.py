@@ -19,10 +19,24 @@ def main(default_config="configs/benchmark/train.json", expected_task="qa"):
     parser.add_argument("--model", help="Override base path, typically a downloaded local model")
     parser.add_argument("--prepared-dir")
     parser.add_argument("--resume", help="Native checkpoint-N directory inside this run")
+    parser.add_argument("--init-from", help="Initialize a new ICAE SFT run from pretraining adapters")
     parser.add_argument("--max-steps", type=int, help="Override cumulative optimizer-step target")
     parser.add_argument("--plan-only", action="store_true", help="Validate files/settings; no model or CUDA allocation")
     args = parser.parse_args()
     config = load_config(project_path(args.config))
+    model_config = config["model"]
+    method = model_config.get("method", "seco")
+    pretraining = expected_task == "icae_pretrain"
+    if method == "icae" or pretraining:
+        from icae.stages import validate_stage
+
+        validate_stage(model_config, expected_task)
+    if args.init_from and (method != "icae" or pretraining or args.resume):
+        parser.error("--init-from is for a new ICAE SFT run; it cannot be combined with --resume")
+    if config["data"].get("require_pretrained") and not (args.init_from or args.resume):
+        parser.error("This ICAE SFT config requires --init-from (or --resume for an existing run)")
+    if args.backend == "zero3_cpu" and method != "seco":
+        raise ValueError("Use ddp, zero2 or zero2_cpu for methods with variable per-sample encoder calls")
     if args.model:
         config["model"]["name_or_path"] = model_source(args.model)
     if args.prepared_dir:
@@ -42,15 +56,31 @@ def main(default_config="configs/benchmark/train.json", expected_task="qa"):
     if sha256_file(prepared / "train.jsonl") != manifest["files"]["train.jsonl"]:
         raise ValueError("Training data hash mismatch")
     ratios = config["model"]["random_ratios"] if config["model"]["ratio_mode"] == "random" else [config["model"]["compress_ratio"]]
-    if min(ratios) < manifest["arguments"]["min_ratio"]:
+    eval_path = None
+    if pretraining:
+        from icae.stages import pretraining_limits
+
+        encoder_limit, decoder_limit = pretraining_limits(manifest, model_config, ratios)
+        if "eval.jsonl" in manifest["files"]:
+            eval_path = prepared / "eval.jsonl"
+            if sha256_file(eval_path) != manifest["files"][eval_path.name]:
+                raise ValueError("Pretraining validation data hash mismatch")
+    elif min(ratios) < manifest["arguments"]["min_ratio"]:
         raise ValueError("Training ratio is below preprocessing --min-ratio; preprocess again")
+    else:
+        encoder_limit = manifest["arguments"]["max_input_tokens"]
+        decoder_limit = manifest["arguments"]["max_decoder_tokens"]
     world_size = int(os.environ.get("WORLD_SIZE", "1"))
     effective_batch = world_size * config["training"]["per_device_train_batch_size"] * config["training"]["gradient_accumulation_steps"]
     resume = project_path(args.resume) if args.resume else None
+    initialization = None
     if resume:
         if resume.parent != output or not (resume / "trainer_state.json").is_file():
             raise ValueError("--resume must name a native checkpoint-N inside --output")
         old = read_json(resume / "experiment.json")
+        initialization = old.get("initialization")
+        if config["data"].get("require_pretrained") and not initialization:
+            raise ValueError("This SFT checkpoint has no ICAE pretraining provenance")
         if config["model"]["revision"] == "main":
             config["model"]["revision"] = old["config"]["model"]["revision"]
         old_config, current_config = copy.deepcopy(old["config"]), copy.deepcopy(config)
@@ -64,9 +94,16 @@ def main(default_config="configs/benchmark/train.json", expected_task="qa"):
             raise ValueError("Resume target already reached; increase --max-steps")
     elif output.exists():
         raise FileExistsError(f"Run directory already exists: {output}; set --resume or choose a new path")
+    if args.init_from:
+        from icae.stages import initialization_checkpoint
+
+        initialization = initialization_checkpoint(args.init_from, model_config, manifest["tokenizer_fingerprint"])
     plan = {"config": config, "backend": args.backend, "world_size": world_size,
             "effective_batch": effective_batch, "resume": str(resume) if resume else None,
-            "data_manifest_sha256": sha256_file(prepared / "manifest.json")}
+            "data_manifest_sha256": sha256_file(prepared / "manifest.json"),
+            "token_limits": {"encoder": encoder_limit, "decoder": decoder_limit}}
+    if initialization:
+        plan["initialization"] = initialization
     if args.plan_only:
         import json
         print(json.dumps(plan, ensure_ascii=False, indent=2))
@@ -76,7 +113,7 @@ def main(default_config="configs/benchmark/train.json", expected_task="qa"):
     import transformers
     from datasets import load_dataset
     from transformers import AutoTokenizer, TrainingArguments, set_seed
-    from seco.model import SECO
+    from seco.model import build_model
     from seco.training import SeCoTrainer
 
     if not torch.cuda.is_available():
@@ -96,15 +133,27 @@ def main(default_config="configs/benchmark/train.json", expected_task="qa"):
         tokenizer.pad_token = tokenizer.eos_token
     if tokenizer_fingerprint(tokenizer) != manifest["tokenizer_fingerprint"]:
         raise ValueError("Tokenizer differs from preprocessing; regenerate prepared data")
-    dataset = load_dataset("json", data_files=str(prepared / "train.jsonl"), split="train")
+    collator = Collator(tokenizer.pad_token_id)
+    columns = ["input_ids", "prompt_mask", "labels"]
+    if pretraining:
+        from icae.pretraining import PretrainingCollator
+
+        collator = PretrainingCollator(tokenizer.pad_token_id)
+        columns = ["input_ids", "ae_labels", "labels"]
     with training_args.main_process_first(desc="load tokenized training rows"):
-        dataset = dataset.select_columns(["input_ids", "prompt_mask", "labels"])
-    model = SECO(config["model"])
+        dataset = load_dataset("json", data_files=str(prepared / "train.jsonl"), split="train").select_columns(columns)
+        validation = (load_dataset("json", data_files=str(eval_path), split="train").select_columns(columns)
+                      if eval_path else None)
+    model = build_model(config["model"])
+    if args.init_from:
+        if sha256_file(Path(initialization["checkpoint"]) / "model.safetensors") != initialization["weights_sha256"]:
+            raise ValueError("ICAE pretraining weights changed after validation")
+        model.load_adapters(initialization["checkpoint"])
     # Resolve a remote 'main' to the actual loaded commit in saved metadata.
     config["model"]["revision"] = getattr(model.config, "_commit_hash", None) or config["model"]["revision"]
-    if model.config.max_position_embeddings < manifest["arguments"]["max_input_tokens"]:
+    if model.config.max_position_embeddings < encoder_limit:
         raise ValueError("Prepared encoder length exceeds the model position limit")
-    if model.config.max_position_embeddings < manifest["arguments"]["max_decoder_tokens"]:
+    if model.config.max_position_embeddings < decoder_limit:
         raise ValueError("Prepared decoder length exceeds the model position limit")
     experiment = {**plan, "config": config, "task": expected_task, "format": "seco-adapters-v1", "config_hash": fingerprint(config),
                   "tokenizer_fingerprint": manifest["tokenizer_fingerprint"],
@@ -117,8 +166,8 @@ def main(default_config="configs/benchmark/train.json", expected_task="qa"):
             "answer_hashes": manifest.get("answer_hashes", [])}
     if expected_task == "ruler_qa":
         experiment["ruler_qa_training_question_keys"] = manifest["question_keys"]
-    trainer = SeCoTrainer(model=model, args=training_args, train_dataset=dataset,
-                          data_collator=Collator(tokenizer.pad_token_id), experiment=experiment)
+    trainer = SeCoTrainer(model=model, args=training_args, train_dataset=dataset, eval_dataset=validation,
+                          data_collator=collator, experiment=experiment)
     if trainer.is_world_process_zero():
         write_json(output / "experiment.json", experiment)
         write_json(output / "data_manifest.json", manifest)
@@ -129,3 +178,7 @@ def main(default_config="configs/benchmark/train.json", expected_task="qa"):
     trainer.save_state()
     trainer.log_metrics("train", result.metrics)
     trainer.save_metrics("train", result.metrics)
+    if validation is not None:
+        metrics = trainer.evaluate()
+        trainer.log_metrics("eval", metrics)
+        trainer.save_metrics("eval", metrics)

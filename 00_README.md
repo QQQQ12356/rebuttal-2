@@ -1,17 +1,21 @@
-# SeCo 实验指南
+# 长上下文压缩实验
 
-Benchmark、NIAH 和 RULER QA 共用 SeCo 模型、语义压缩算法及训练与合并实现。默认基座是 `Qwen/Qwen3-4B-Instruct-2507`。在 Linux 上执行实验命令，Windows 用于编辑和静态检查。
+SeCo、COMI、ICAE 和 RAM 共用 Benchmark、NIAH 与 RULER QA 的数据、训练和评测流程。四种方法默认使用 `meta-llama/Llama-3.2-1B-Instruct`。在 Linux 上执行实验命令。
 
-| 流程 | 实验指南 | 脚本 | 配置 |
-| --- | --- | --- | --- |
-| Benchmark | [五数据集训练、四数据集评测与 Excel 导出](docs/benchmark/00_README.md) | `scripts/benchmark/{py,sh}/` | `configs/benchmark/` |
-| NIAH | [大海捞针训练、网格评测与热力图](docs/niah/00_README.md) | `scripts/niah/{py,sh}/` | `configs/niah/` |
-| RULER QA | [SQuAD 与 HotpotQA 长上下文训练、评测和热力图](docs/ruler_qa/00_README.md) | `scripts/ruler_qa/{py,sh}/` | `configs/ruler_qa/` |
+| 步骤 | 指南 |
+| --- | --- |
+| 00 | [方法、代码与目录](docs/00_methods.md) |
+| 01 | [Linux 环境和模型下载](docs/01_environment.md) |
+| 02 | [数据下载与预处理](docs/02_data.md) |
+| 03 | [训练、恢复与合并](docs/03_training.md) |
+| 04 | [生成、指标与报表](docs/04_evaluation.md) |
+| 05 | [NIAH / RULER QA 的 LLM-as-Judge](docs/05_llm_judge.md) |
+| 06 | [Shell 变量、Python 参数和 JSON 配置](docs/06_parameters.md) |
 
-共享实现位于 `seco/`，共享 ZeRO 配置位于 `configs/zero*.json`。实验用例分别位于 `tests/benchmark/` 和 `tests/niah/`，共享模型验证和原始压缩基线位于 `tests/`。原始 SeCo 脚本保存在 `legacy/` 供核对。
-
-在项目根目录执行各指南中的命令。已有 Benchmark 命令中的 `scripts/py/` 和 `scripts/sh/` 分别改用 `scripts/benchmark/py/` 和 `scripts/benchmark/sh/`。已生成的数据、检查点、评测结果和日志仍使用原来的 `artifacts/` 与 `logs/` 路径。
-
-## 评测解码参数
-
-三个评测均可在 Bash 脚本顶部修改解码变量，也支持环境变量和 Python CLI 覆盖。详见 [01 评测解码配置](docs/01_decoding.md)。
+| 任务 | 专项指南 |
+| --- | --- |
+| Benchmark | [五数据集训练、四数据集评测与 Excel 导出](docs/benchmark/00_README.md) |
+| NIAH | [检索训练、长度×深度网格与热力图](docs/niah/00_README.md) |
+| RULER QA | [SQuAD 与 HotpotQA 长上下文训练、评测和热力图](docs/ruler_qa/00_README.md) |
+| ICAE | [预训练、任务微调和专用参数](docs/icae/00_README.md) |
+| ICAE | [预训练、任务微调和专用参数](docs/icae/00_README.md) |

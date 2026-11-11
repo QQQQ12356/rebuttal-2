@@ -1,0 +1,47 @@
+{
+  "model": {
+    "method": "seco",
+    "name_or_path": "meta-llama/Llama-3.2-1B-Instruct",
+    "revision": "main",
+    "dtype": "bfloat16",
+    "attn_implementation": "sdpa",
+    "similarity_chunk_tokens": 16,
+    "compress_ratio": 16,
+    "ratio_mode": "random",
+    "random_ratios": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "lora_r": 128,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05
+  },
+  "data": {
+    "prepared_dir": "artifacts/seco/Llama-3.2-1B-Instruct/benchmark/prepared/default"
+  },
+  "training": {
+    "per_device_train_batch_size": 1,
+    "gradient_accumulation_steps": 8,
+    "learning_rate": 0.00001,
+    "num_train_epochs": 1,
+    "max_steps": -1,
+    "lr_scheduler_type": "cosine",
+    "warmup_ratio": 0.1,
+    "weight_decay": 0.01,
+    "max_grad_norm": 1,
+    "gradient_checkpointing": true,
+    "save_strategy": "steps",
+    "save_steps": 500,
+    "save_total_limit": 3,
+    "logging_steps": 10,
+    "dataloader_num_workers": 2,
+    "dataloader_pin_memory": true,
+    "seed": 42,
+    "data_seed": 42,
+    "report_to": "none",
+    "optim": "adamw_torch",
+    "eval_strategy": "no"
+  }
+}

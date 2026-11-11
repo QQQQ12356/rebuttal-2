@@ -3,6 +3,7 @@ import argparse
 import glob
 
 from _bootstrap import require_linux
+from seco.experiment import artifact_path
 from seco.io import project_path
 from seco.reporting import export_excel
 
@@ -10,7 +11,7 @@ from seco.reporting import export_excel
 def main():
     require_linux()
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--inputs", nargs="+", default=["artifacts/benchmarks/**/metrics.json"],
+    parser.add_argument("--inputs", nargs="+", default=[artifact_path("benchmark", "benchmarks/**/metrics.json")],
                         help="Paths or quoted recursive glob patterns")
     parser.add_argument("--output", required=True)
     parser.add_argument("--include-details", action="store_true", help="Load sibling predictions.jsonl contents too")

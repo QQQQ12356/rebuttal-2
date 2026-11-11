@@ -1,23 +1,23 @@
 # 04 NIAH 训练与断点恢复
 
-NIAH 使用自己的 `configs/niah/train.json`、入口和 run 目录。数据 manifest 必须是 NIAH train 格式；原五数据集训练入口会拒绝 NIAH 数据，NIAH 训练入口也拒绝旧 QA 数据。共享实现集中在 `seco/train_cli.py`，不复制模型/优化器/保存代码。
+NIAH 使用自己的 `configs/niah/seco/train.json`、入口和 run 目录。数据 manifest 必须是 NIAH train 格式；原五数据集训练入口会拒绝 NIAH 数据，NIAH 训练入口也拒绝旧 QA 数据。共享实现集中在 `seco/train_cli.py`，不复制模型/优化器/保存代码。
 
 ## 1. 启动命令
 
 ```bash
 # 只验证配置、数据哈希、比例预算和输出计划，不加载模型。
-PLAN_ONLY=1 bash scripts/niah/sh/30_train.sh
+PLAN_ONLY=1 bash scripts/niah/sh/seco/30_train.sh
 
 # 默认四卡 ZeRO-2。
-bash scripts/niah/sh/30_train.sh
+bash scripts/niah/sh/seco/30_train.sh
 
 # 单卡或两卡 DDP。
-CUDA_VISIBLE_DEVICES=0 NPROC_PER_NODE=1 BACKEND=ddp bash scripts/niah/sh/30_train.sh
-CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2 BACKEND=ddp bash scripts/niah/sh/30_train.sh
+CUDA_VISIBLE_DEVICES=0 NPROC_PER_NODE=1 BACKEND=ddp bash scripts/niah/sh/seco/30_train.sh
+CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2 BACKEND=ddp bash scripts/niah/sh/seco/30_train.sh
 
 # 卸载方案。
-BACKEND=zero2_cpu bash scripts/niah/sh/30_train.sh
-BACKEND=zero3_cpu bash scripts/niah/sh/30_train.sh
+BACKEND=zero2_cpu bash scripts/niah/sh/seco/30_train.sh
+BACKEND=zero3_cpu bash scripts/niah/sh/seco/30_train.sh
 ```
 
 | backend | 保存/显存行为 | 使用提示 |
@@ -35,7 +35,7 @@ BACKEND=zero3_cpu bash scripts/niah/sh/30_train.sh
 
 | model 字段 | 默认 | 含义 |
 | --- | --- | --- |
-| name_or_path / revision | Qwen/Qwen3-4B-Instruct-2507 / main | 默认基座与远程版本；Shell 会传入本地 MODEL_PATH |
+| name_or_path / revision | meta-llama/Llama-3.2-1B-Instruct / main | 默认基座与远程版本；Shell 会传入本地 MODEL_PATH |
 | dtype | bfloat16 | 按硬件选择 bfloat16/float16/float32，保持对照一致 |
 | attn_implementation | sdpa | 可选 eager、flash_attention_2；后者需要匹配安装 |
 | similarity_chunk_tokens | 16 | 原公式余弦广播分块大小；0 用原始整块路径 |
@@ -43,7 +43,7 @@ BACKEND=zero3_cpu bash scripts/niah/sh/30_train.sh
 | random_ratios | [4,8,16,32] | 每次训练 forward 抽一个，同 microbatch 共用；重复值相当于加权 |
 | compress_ratio | 16 | fixed 模式使用的比例；测试由 --ratios 明确覆盖 |
 | lora_r / lora_alpha / lora_dropout | 128 / 32 / 0.05 | 两套分支的 LoRA 设置，不能在加载 checkpoint 时随意改 |
-| data.prepared_dir | artifacts/niah/prepared/train_v1 | 独立训练产物目录；Shell PREPARED_DIR 覆盖 |
+| data.prepared_dir | artifacts/seco/Llama-3.2-1B-Instruct/niah/prepared/train_v1 | 独立训练产物目录；Shell PREPARED_DIR 覆盖 |
 
 随机模式使用可被 native Trainer checkpoint 恢复的 torch CPU RNG。改为 fixed 只需设置 `ratio_mode=fixed` 并设定 compress_ratio；random_ratios 可保留为未启用配置。若训练比例小于数据预处理 limits.min_ratio，入口会报错；降低比例时重新预处理，不仅修改训练 JSON。
 
@@ -69,15 +69,15 @@ BACKEND=zero3_cpu bash scripts/niah/sh/30_train.sh
 
 ## 4. 保存、恢复与合并
 
-默认 run 位于 `artifacts/niah/runs/niah_qwen3_4b_<UTC时间>_<随机后缀>/`，包括 experiment.json、data_manifest.json、checkpoint-N、final。checkpoint-N 保留 Trainer/原生 DeepSpeed optimizer、scheduler、RNG 状态；final 是推理导出，不作为训练恢复点。小 safetensors 保存双 adapter，推理需要相同基座；ZeRO 原生 checkpoint 可能很大，不能只复制小权重文件恢复。
+默认 run 位于 `artifacts/seco/Llama-3.2-1B-Instruct/niah/runs/niah_<UTC时间>_<随机后缀>/`，包括 experiment.json、data_manifest.json、checkpoint-N、final。checkpoint-N 保留 Trainer/原生 DeepSpeed optimizer、scheduler、RNG 状态；final 是推理导出，不作为训练恢复点。小 safetensors 保存双 adapter，推理需要相同基座；ZeRO 原生 checkpoint 可能很大，不能只复制小权重文件恢复。
 
 ```bash
-RESUME=artifacts/niah/runs/真实run/checkpoint-500 MAX_STEPS=2000 \
-    bash scripts/niah/sh/30_train.sh
+RESUME=artifacts/seco/Llama-3.2-1B-Instruct/niah/runs/真实run/checkpoint-500 MAX_STEPS=2000 \
+    bash scripts/niah/sh/seco/30_train.sh
 ```
 
 恢复要求同模型、数据 manifest、backend、world size 和配置，只允许变更累计 max_steps。run 目录默认由 RESUME 的父目录确定。改变比例数组、样本集、LoRA 或进程数应开新 run。
 
 训练归档还保存 NIAH 背景文档与已选答案的哈希，留出网格评测会用这些哈希核对背景和答案重复。比较不同训练实验时，使用同一份固定留出网格。训练后也可使用 checkpoint 对应的 `PREPARED_DIR` 做 [09 训练集评测](09_train_benchmark.md)。这一步在训练结束后单独执行。
 
-合并使用独立 `scripts/niah/sh/40_merge_lora.sh`，底层复用统一 PEFT 合并实现。默认 CPU 合并、输出 `${CHECKPOINT}_merged`；已有目录拒绝覆盖。完整多节点设置及 native checkpoint 的限制与 [Benchmark 训练指南](../benchmark/04_training.md) 一致。
+合并使用独立 `scripts/niah/sh/seco/40_merge_lora.sh`，底层复用统一 PEFT 合并实现。默认 CPU 合并、输出 `${CHECKPOINT}_merged`；已有目录拒绝覆盖。完整多节点设置及 native checkpoint 的限制与 [Benchmark 训练指南](../benchmark/04_training.md) 一致。

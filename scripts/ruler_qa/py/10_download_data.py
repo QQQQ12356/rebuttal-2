@@ -5,6 +5,7 @@ import subprocess
 from tempfile import TemporaryDirectory
 
 from ruler_bootstrap import require_linux
+from seco.experiment import artifact_path
 from seco.io import project_path, read_json, sha256_file
 
 
@@ -32,7 +33,7 @@ def main():
     require_linux()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sources", default="configs/ruler_qa/sources.json")
-    parser.add_argument("--output", default="artifacts/ruler_qa/raw")
+    parser.add_argument("--output", default=artifact_path("ruler_qa", "raw"))
     args = parser.parse_args()
     output = project_path(args.output)
     output.mkdir(parents=True, exist_ok=True)

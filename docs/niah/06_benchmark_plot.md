@@ -9,14 +9,14 @@
 先填写真实 checkpoint。可以使用 NIAH 训练后的 final/checkpoint-N、merged 模型，也可以使用本工程已有兼容 SeCo checkpoint 作为未做 NIAH 训练的对照。
 
 ```bash
-CHECKPOINT=artifacts/niah/runs/真实run/final bash scripts/niah/sh/40_merge_lora.sh
+CHECKPOINT=artifacts/seco/Llama-3.2-1B-Instruct/niah/runs/真实run/final bash scripts/niah/sh/seco/40_merge_lora.sh
 
-CHECKPOINT=artifacts/niah/runs/真实run/final_merged \
-PLAN_ONLY=1 bash scripts/niah/sh/50_benchmark.sh
+CHECKPOINT=artifacts/seco/Llama-3.2-1B-Instruct/niah/runs/真实run/final_merged \
+PLAN_ONLY=1 bash scripts/niah/sh/seco/50_benchmark.sh
 
-CHECKPOINT=artifacts/niah/runs/真实run/final_merged \
+CHECKPOINT=artifacts/seco/Llama-3.2-1B-Instruct/niah/runs/真实run/final_merged \
 CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2 \
-bash scripts/niah/sh/50_benchmark.sh
+bash scripts/niah/sh/seco/50_benchmark.sh
 ```
 
 plan-only 检查 checkpoint 元数据、grid 文件哈希、比例和生成预算，打印样本数/最长输入/调用规模，不加载 torch 或模型；模型真实位置上限在实际加载后检查。NIAH checkpoint 保存的训练正文/答案哈希会再与本 grid 核对。
@@ -27,7 +27,7 @@ plan-only 检查 checkpoint 元数据、grid 文件哈希、比例和生成预�
 | --- | --- | --- |
 | --checkpoint | 必填 | adapter final/checkpoint-N 或完整 merged 目录 |
 | --model | 无 | adapter 的原始基座迁移路径，必须保持相同权重 |
-| --grid-dir | artifacts/niah/prepared/grid_v1 | 独立固定测试网格 |
+| --grid-dir | artifacts/seco/Llama-3.2-1B-Instruct/niah/prepared/grid_v1 | 独立固定测试网格 |
 | --output | 必填 | 新 NIAH benchmark 目录，拒绝覆盖 |
 | --ratios | 4 8 16 32 | 各压缩比使用相同样本，无重复项且不小于 grid.min_ratio |
 | --max-test-samples | 全部 | 每个压缩比的样本总数上限，须为正整数 |
@@ -48,7 +48,7 @@ plan-only 检查 checkpoint 元数据、grid 文件哈希、比例和生成预�
 输出：
 
 ```text
-artifacts/niah/benchmarks/<独立benchmark>/
+artifacts/seco/Llama-3.2-1B-Instruct/niah/benchmarks/<独立benchmark>/
   benchmark.json                 参数、checkpoint/grid 身份、GPU、计时定义
   ratio_4/
     predictions.rankN.jsonl      每 batch 刷盘的分片结果
@@ -79,12 +79,12 @@ JSON 和 CSV 保存0–1，图显示0–100%。每格5次的 EM=0.8 表示4/5正
 ## 3. 重新打分与缺失格子
 
 ```bash
-PREDICTIONS=artifacts/niah/benchmarks/真实benchmark/ratio_16/predictions.jsonl \
-    bash scripts/niah/sh/60_score.sh
+PREDICTIONS=artifacts/seco/Llama-3.2-1B-Instruct/niah/benchmarks/真实benchmark/ratio_16/predictions.jsonl \
+    bash scripts/niah/sh/seco/60_score.sh
 
-python scripts/niah/py/60_score.py \
+python scripts/niah/py/seco/60_score.py \
     --predictions /路径/partial_predictions.jsonl \
-    --grid-manifest artifacts/niah/prepared/grid_v1/manifest.json \
+    --grid-manifest artifacts/seco/Llama-3.2-1B-Instruct/niah/prepared/grid_v1/manifest.json \
     --output /新路径/partial_metrics.json --allow-incomplete
 ```
 
@@ -93,13 +93,13 @@ python scripts/niah/py/60_score.py \
 ## 4. 一张图展示多个比例
 
 ```bash
-BENCHMARK_DIR=artifacts/niah/benchmarks/真实benchmark \
-    bash scripts/niah/sh/70_plot_heatmap.sh
+BENCHMARK_DIR=artifacts/seco/Llama-3.2-1B-Instruct/niah/benchmarks/真实benchmark \
+    bash scripts/niah/sh/seco/70_plot_heatmap.sh
 
 # 单个比例，接近用户参考图的单面板布局。
-python scripts/niah/py/70_plot_heatmap.py \
-    --inputs 'artifacts/niah/benchmarks/真实benchmark/ratio_16/metrics.json' \
-    --output artifacts/niah/figures/R16.png --columns 1
+python scripts/niah/py/seco/70_plot_heatmap.py \
+    --inputs 'artifacts/seco/Llama-3.2-1B-Instruct/niah/benchmarks/真实benchmark/ratio_16/metrics.json' \
+    --output artifacts/seco/Llama-3.2-1B-Instruct/niah/figures/R16.png --columns 1
 ```
 
 | 绘图参数 | 默认 | 说明 |

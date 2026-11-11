@@ -1,16 +1,17 @@
-"""Download the Qwen Instruct snapshot and record its Hub revision."""
+"""Download the Llama Instruct snapshot and record its Hub revision."""
 import argparse
 
 from ruler_bootstrap import require_linux
+from seco.experiment import MODEL_ID, default_model_path
 from seco.io import project_path, write_json
 
 
 def main():
     require_linux()
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", default="Qwen/Qwen3-4B-Instruct-2507")
+    parser.add_argument("--model", default=MODEL_ID)
     parser.add_argument("--revision", default="main")
-    parser.add_argument("--output", default="artifacts/models/Qwen3-4B-Instruct-2507")
+    parser.add_argument("--output", default=default_model_path())
     args = parser.parse_args()
     from huggingface_hub import HfApi, snapshot_download
 

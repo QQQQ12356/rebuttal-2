@@ -8,6 +8,7 @@ from urllib.request import Request, urlopen
 from zipfile import ZipFile
 
 from niah_bootstrap import require_linux
+from seco.experiment import artifact_path
 from seco.io import project_path, read_json, sha256_file, write_json, write_jsonl
 
 
@@ -35,7 +36,7 @@ def main():
     require_linux()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", default="configs/niah/sources.json")
-    parser.add_argument("--output", default="artifacts/niah/raw")
+    parser.add_argument("--output", default=artifact_path("niah", "raw"))
     parser.add_argument("--sources", nargs="+", help="Default: enabled entries in registry")
     parser.add_argument("--limit", type=int, help="Override maximum raw rows per source; 0 = all")
     args = parser.parse_args()

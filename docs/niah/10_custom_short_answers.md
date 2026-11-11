@@ -48,23 +48,23 @@ Shell 文件顶部的变量可直接修改，也可以在调用前临时赋值�
 从仓库根目录运行。以下命令只生成 custom 训练样本，并跳过 Cogito。此开关作用于训练预处理；如需跳过下载，编辑下载使用的 sources JSON。
 
 ```bash
-PREPARED_DIR=artifacts/niah/prepared/train_custom_v1 SYNTHETIC_TASKS=custom NO_SUPERVISED=1 \
-    bash scripts/niah/sh/20_prepare_train.sh
+PREPARED_DIR=artifacts/seco/Llama-3.2-1B-Instruct/niah/prepared/train_custom_v1 SYNTHETIC_TASKS=custom NO_SUPERVISED=1 \
+    bash scripts/niah/sh/seco/20_prepare_train.sh
 
-GRID_DIR=artifacts/niah/prepared/grid_custom_v1 GRID_TASK=custom GRID_REPEATS=5 \
-    TRAINING_MANIFEST=artifacts/niah/prepared/train_custom_v1/manifest.json \
-    bash scripts/niah/sh/21_prepare_grid.sh
+GRID_DIR=artifacts/seco/Llama-3.2-1B-Instruct/niah/prepared/grid_custom_v1 GRID_TASK=custom GRID_REPEATS=5 \
+    TRAINING_MANIFEST=artifacts/seco/Llama-3.2-1B-Instruct/niah/prepared/train_custom_v1/manifest.json \
+    bash scripts/niah/sh/seco/21_prepare_grid.sh
 ```
 
 也可直接传 Python 参数：
 
 ```bash
-python scripts/niah/py/20_prepare_train.py --synthetic-tasks custom --no-supervised \
-    --output artifacts/niah/prepared/train_custom_v1
+python scripts/niah/py/seco/20_prepare_train.py --synthetic-tasks custom --no-supervised \
+    --output artifacts/seco/Llama-3.2-1B-Instruct/niah/prepared/train_custom_v1
 
-python scripts/niah/py/21_prepare_grid.py --task custom --repeats 5 \
-    --output artifacts/niah/prepared/grid_custom_v1 \
-    --training-manifest artifacts/niah/prepared/train_custom_v1/manifest.json
+python scripts/niah/py/seco/21_prepare_grid.py --task custom --repeats 5 \
+    --output artifacts/seco/Llama-3.2-1B-Instruct/niah/prepared/grid_custom_v1 \
+    --training-manifest artifacts/seco/Llama-3.2-1B-Instruct/niah/prepared/train_custom_v1/manifest.json
 ```
 
 两组命令任选一组。下游训练和评测分别传入新 `PREPARED_DIR` 和 `GRID_DIR`，参见 [04 训练](04_training.md) 和 [06 评测与绘图](06_benchmark_plot.md)。

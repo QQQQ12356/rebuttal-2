@@ -8,13 +8,13 @@
 
 ```bash
 export CHECKPOINT="$RUN_DIR/final"
-export PREPARED_DIR=artifacts/ruler_qa/prepared/train_v1
+export PREPARED_DIR=artifacts/seco/Llama-3.2-1B-Instruct/ruler_qa/prepared/train_v1
 
 EVAL_TRAIN=1 MAX_TEST_SAMPLES=32 RATIOS='4 8' PLAN_ONLY=1 \
-  bash scripts/ruler_qa/sh/50_benchmark.sh
+  bash scripts/ruler_qa/sh/seco/50_benchmark.sh
 
 EVAL_TRAIN=1 MAX_TEST_SAMPLES=32 RATIOS='4 8' \
-  bash scripts/ruler_qa/sh/50_benchmark.sh
+  bash scripts/ruler_qa/sh/seco/50_benchmark.sh
 ```
 
 预检确认 `split` 为 `train`，并打印所选格子计数、全量行数 `prepared_test_samples`、实际行数 `test_samples` 和总生成次数 `generation_examples`。例如选中 32 行、两个压缩比时，总计生成 64 次。预检无需加载模型或启动 GPU 推理。
@@ -22,9 +22,9 @@ EVAL_TRAIN=1 MAX_TEST_SAMPLES=32 RATIOS='4 8' \
 也可以直接调用 Python 入口。去掉 `--plan-only` 即在单卡上运行生成。
 
 ```bash
-python scripts/ruler_qa/py/50_benchmark.py \
+python scripts/ruler_qa/py/seco/50_benchmark.py \
   --eval-train --prepared-dir "$PREPARED_DIR" --checkpoint "$CHECKPOINT" \
-  --output artifacts/ruler_qa/benchmarks/train_qa_32 \
+  --output artifacts/seco/Llama-3.2-1B-Instruct/ruler_qa/benchmarks/train_qa_32 \
   --ratios 4 8 --max-test-samples 32 --plan-only
 ```
 
@@ -33,7 +33,7 @@ python scripts/ruler_qa/py/50_benchmark.py \
 | Shell 变量 | Python 参数 | 默认值与作用 |
 | --- | --- | --- |
 | `EVAL_TRAIN` | `--eval-train` | `0` 评测独立测试网格。设为 `1` 评测 checkpoint 的训练数据。 |
-| `PREPARED_DIR` | `--prepared-dir` | `$RULER_QA_ROOT/prepared/train_v1`。选择训练产物目录，仅训练模式读取。Python 默认以 `artifacts/ruler_qa` 为根。 |
+| `PREPARED_DIR` | `--prepared-dir` | `$RULER_QA_ROOT/prepared/train_v1`。选择训练产物目录，仅训练模式读取。Python 默认以 `artifacts/seco/Llama-3.2-1B-Instruct/ruler_qa` 为根。 |
 | `TEST_DIR` | `--test-dir` | `$RULER_QA_ROOT/prepared/test_v1`。独立测试模式的数据目录。 |
 | `MAX_TEST_SAMPLES` | `--max-test-samples` | 留空使用全量。设为正整数可限制每个压缩比的总行数，超过可用行数时取全量。 |
 | `CHECKPOINT` | `--checkpoint` | 必填。目录中应包含训练实验元数据和模型产物。 |
@@ -44,7 +44,7 @@ python scripts/ruler_qa/py/50_benchmark.py \
 
 样本上限对两个任务和所有长度格子合计生效。脚本按任务 × 长度格子轮流选取固定子集，再分配到各 GPU，因此压缩比与 GPU 数量变化时复用同一子集。上限小于格子数时，部分格子会显示为 `NA`。默认训练目标长度为 4K、8K，实际长度格子取自训练清单。
 
-优先在命令前设置变量。若需要长期调整默认值，可修改 `scripts/ruler_qa/sh/50_benchmark.sh` 顶部对应变量，同时核对 Python 入口中直接调用时的默认值。训练集的配额和长度由 `configs/ruler_qa/prepare.json` 的 `train_samples_per_task` 和 `train_lengths` 控制。调整这些准备参数后生成新训练数据时，要用对应数据训练得到的 checkpoint 进行训练集评测。
+优先在命令前设置变量。若需要长期调整默认值，可修改 `scripts/ruler_qa/sh/seco/50_benchmark.sh` 顶部对应变量，同时核对 Python 入口中直接调用时的默认值。训练集的配额和长度由 `configs/ruler_qa/prepare.json` 的 `train_samples_per_task` 和 `train_lengths` 控制。调整这些准备参数后生成新训练数据时，要用对应数据训练得到的 checkpoint 进行训练集评测。
 
 ## 输出与排查
 

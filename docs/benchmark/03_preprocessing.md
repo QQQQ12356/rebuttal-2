@@ -5,16 +5,16 @@
 ## 1. 使用方式
 
 ```bash
-bash scripts/benchmark/sh/20_prepare_data.sh
+bash scripts/benchmark/sh/seco/20_prepare_data.sh
 
 # 新数据版本：更严格的输入长度；不能覆盖已有 prepared 目录。
-PREPARED_DIR=artifacts/prepared/L8192_s42 MAX_INPUT_TOKENS=8192 \
-    bash scripts/benchmark/sh/20_prepare_data.sh
+PREPARED_DIR=artifacts/seco/Llama-3.2-1B-Instruct/benchmark/prepared/L8192_s42 MAX_INPUT_TOKENS=8192 \
+    bash scripts/benchmark/sh/seco/20_prepare_data.sh
 
 # 仅选择两个训练源；测试仍处理全部四个 Twwilght 源。
-python scripts/benchmark/py/20_prepare_data.py \
-    --model artifacts/models/Qwen3-4B-Instruct-2507 \
-    --output artifacts/prepared/two_sources \
+python scripts/benchmark/py/seco/20_prepare_data.py \
+    --model artifacts/seco/Llama-3.2-1B-Instruct/model \
+    --output artifacts/seco/Llama-3.2-1B-Instruct/benchmark/prepared/two_sources \
     --datasets naturalqa hotpotqa --train-samples 2000 3000
 ```
 
@@ -36,8 +36,8 @@ Shell 顶部的 `DATASETS` 和 `TRAIN_SAMPLES` 是数组，按位置一一对应
 
 | Python 参数 | 默认 | 作用与修改提示 |
 | --- | --- | --- |
-| `--raw-dir` | artifacts/raw | raw 根目录，须有四个 benchmark 文件以及选中的训练源 |
-| `--output` | artifacts/prepared/default | 新的 prepared 根目录；已有目录报错 |
+| `--raw-dir` | artifacts/seco/Llama-3.2-1B-Instruct/benchmark/raw | raw 根目录，须有四个 benchmark 文件以及选中的训练源 |
+| `--output` | artifacts/seco/Llama-3.2-1B-Instruct/benchmark/prepared/default | 新的 prepared 根目录；已有目录报错 |
 | `--model` / `--revision` | 本地默认模型目录 / main | 用于分词的模型/tokenizer；远程版本建议写 commit |
 | `--datasets` | 五个训练源 | naturalqa / 2wikimqa / hotpotqa / narrativeqa / multinews |
 | `--train-samples` | 每源 5000 | 筛选后目标数量；单数或与 datasets 等长数组；0 全部 |
@@ -59,7 +59,7 @@ Shell 顶部的 `DATASETS` 和 `TRAIN_SAMPLES` 是数组，按位置一一对应
 ## 4. 产物与统计
 
 ```text
-artifacts/prepared/default/
+artifacts/seco/Llama-3.2-1B-Instruct/benchmark/prepared/default/
   manifest.json
   train.jsonl               混合训练样本
   train/<dataset>.jsonl     各源已筛选样本

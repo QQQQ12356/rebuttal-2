@@ -8,7 +8,7 @@ source .venv/bin/activate
 python --version
 curl --version
 nvidia-smi
-bash scripts/ruler_qa/sh/00_setup_environment.sh
+bash scripts/ruler_qa/sh/seco/00_setup_environment.sh
 ```
 
 | 设置 | 默认 | 如何调整 |

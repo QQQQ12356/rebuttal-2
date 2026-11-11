@@ -1,4 +1,4 @@
-"""Trainer integration: compact dual adapters plus resumable native DDP/ZeRO state."""
+"""Trainer integration for compact method weights and native DDP/ZeRO state."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -21,9 +21,9 @@ class SeCoTrainer(Trainer):
         output = Path(output_dir or self.args.output_dir)
         output.mkdir(parents=True, exist_ok=True)
         state = self.model.state_dict() if state_dict is None else state_dict
+        expected = self.model.checkpoint_keys()
         adapters = {key: value.detach().cpu().contiguous().clone()
-                    for key, value in state.items() if ".lora_" in key}
-        expected = {key for key, _ in self.model.named_parameters() if ".lora_" in key}
+                    for key, value in state.items() if key in expected}
         if not adapters or set(adapters) != expected or any(v.numel() == 0 for v in adapters.values()):
             raise ValueError("Incomplete adapter state; verify ZeRO-3 gather-on-save is enabled")
         save_file(adapters, str(output / "model.safetensors"))

@@ -3,10 +3,10 @@
 贪心、采样、beam search 及脚本变量的完整说明见 [01 评测解码配置](../01_decoding.md)。
 
 ```bash
-export OUTPUT_DIR=artifacts/ruler_qa/benchmarks/qa_main_v1
-CHECKPOINT="$RUN_DIR/final" PLAN_ONLY=1 bash scripts/ruler_qa/sh/50_benchmark.sh
-CHECKPOINT="$RUN_DIR/final" bash scripts/ruler_qa/sh/50_benchmark.sh
-BENCHMARK_DIR="$OUTPUT_DIR" bash scripts/ruler_qa/sh/70_plot_heatmap.sh
+export OUTPUT_DIR=artifacts/seco/Llama-3.2-1B-Instruct/ruler_qa/benchmarks/qa_main_v1
+CHECKPOINT="$RUN_DIR/final" PLAN_ONLY=1 bash scripts/ruler_qa/sh/seco/50_benchmark.sh
+CHECKPOINT="$RUN_DIR/final" bash scripts/ruler_qa/sh/seco/50_benchmark.sh
+BENCHMARK_DIR="$OUTPUT_DIR" bash scripts/ruler_qa/sh/seco/70_plot_heatmap.sh
 ```
 
 默认在同一测试网格上按 `4 8 16 32` 四个固定压缩比分别贪心生成，每题最多 32 个新 token。用 `RATIOS='4 8'` 缩短评测，用 `TEST_DIR` 指定另一份已准备网格。任一压缩比需 ≥ 网格的 `min_ratio`，生成上限需 ≤ `generation_budget`。
@@ -16,7 +16,7 @@ BENCHMARK_DIR="$OUTPUT_DIR" bash scripts/ruler_qa/sh/70_plot_heatmap.sh
 设置 `EVAL_TRAIN=1` 可改用 checkpoint 对应的训练集，样本上限用法相同。路径设置、预检与输出说明见 [08 训练集评测](08_train_benchmark.md)。
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2   CHECKPOINT="$RUN_DIR/final_merged"   OUTPUT_DIR=artifacts/ruler_qa/benchmarks/qa_merged_v1   bash scripts/ruler_qa/sh/50_benchmark.sh
+CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2   CHECKPOINT="$RUN_DIR/final_merged"   OUTPUT_DIR=artifacts/seco/Llama-3.2-1B-Instruct/ruler_qa/benchmarks/qa_merged_v1   bash scripts/ruler_qa/sh/seco/50_benchmark.sh
 ```
 
 多卡各加载完整模型对，并对样本分片。每个压缩比的所有分片齐全后才汇总。RULER QA 训练得到的 checkpoint 会额外检查训练问题哈希与测试题是否重叠。使用其他流程的 SeCo checkpoint 时，仍校验 tokenizer 和测试清单，训练数据重叠需由该实验自行核查。
@@ -43,6 +43,6 @@ CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2   CHECKPOINT="$RUN_DIR/final_merged"  
 评分在评测时自动执行。修改评分实现后可用完整预测文件离线重算。绘制其他指标时建议显式设置图名。
 
 ```bash
-PREDICTIONS="$OUTPUT_DIR/ratio_4/predictions.jsonl" bash scripts/ruler_qa/sh/60_score.sh
-BENCHMARK_DIR="$OUTPUT_DIR" METRIC=f1 FIGURE_PATH="$OUTPUT_DIR/ruler_qa_f1.png"   bash scripts/ruler_qa/sh/70_plot_heatmap.sh
+PREDICTIONS="$OUTPUT_DIR/ratio_4/predictions.jsonl" bash scripts/ruler_qa/sh/seco/60_score.sh
+BENCHMARK_DIR="$OUTPUT_DIR" METRIC=f1 FIGURE_PATH="$OUTPUT_DIR/ruler_qa_f1.png"   bash scripts/ruler_qa/sh/seco/70_plot_heatmap.sh
 ```

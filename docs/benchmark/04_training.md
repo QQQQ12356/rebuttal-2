@@ -3,30 +3,30 @@
 ## 1. 先确认计划
 
 ```bash
-PLAN_ONLY=1 bash scripts/benchmark/sh/30_train.sh
+PLAN_ONLY=1 bash scripts/benchmark/sh/seco/30_train.sh
 ```
 
 计划检查配置、prepared manifest、训练 JSONL 哈希、压缩比预算和输出路径，然后打印配置与有效 batch。不加载模型、不分配 CUDA、不创建训练目录。实际 tokenizer 一致性和模型位置上限在训练初始化后再检查。
 
-配置优先级为：Python 命令行覆盖项 > Shell 显式传入项 > `configs/benchmark/train.json`。脚本默认向 Python 传入本地 `MODEL_PATH` 和 `PREPARED_DIR`，所以只修改 JSON 中的模型/数据路径还不够；也应改 Shell 变量，或直接运行 Python。
+配置优先级为：Python 命令行覆盖项 > Shell 显式传入项 > `configs/benchmark/seco/train.json`。脚本默认向 Python 传入本地 `MODEL_PATH` 和 `PREPARED_DIR`，所以只修改 JSON 中的模型/数据路径还不够；也应改 Shell 变量，或直接运行 Python。
 
 ## 2. 启动方式
 
 ```bash
 # 默认四卡 ZeRO-2。
-bash scripts/benchmark/sh/30_train.sh
+bash scripts/benchmark/sh/seco/30_train.sh
 
 # 单卡，不启用 DeepSpeed。
-CUDA_VISIBLE_DEVICES=0 NPROC_PER_NODE=1 BACKEND=ddp bash scripts/benchmark/sh/30_train.sh
+CUDA_VISIBLE_DEVICES=0 NPROC_PER_NODE=1 BACKEND=ddp bash scripts/benchmark/sh/seco/30_train.sh
 
 # 两卡普通 DDP。
-CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2 BACKEND=ddp bash scripts/benchmark/sh/30_train.sh
+CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2 BACKEND=ddp bash scripts/benchmark/sh/seco/30_train.sh
 
 # 四卡，优化器状态 CPU 卸载。
-CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero2_cpu bash scripts/benchmark/sh/30_train.sh
+CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero2_cpu bash scripts/benchmark/sh/seco/30_train.sh
 
 # 参数、优化器状态 CPU 卸载。
-CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero3_cpu bash scripts/benchmark/sh/30_train.sh
+CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero3_cpu bash scripts/benchmark/sh/seco/30_train.sh
 ```
 
 | backend | 配置文件 | GPU 上保留内容 | 适用提示 |
@@ -42,7 +42,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero3_cpu bash scripts/ben
 
 ## 3. 固定与随机压缩比
 
-编辑 `configs/benchmark/train.json`：
+编辑 `configs/benchmark/seco/train.json`：
 
 ```json
 {
@@ -67,7 +67,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero3_cpu bash scripts/ben
 
 | JSON 路径 | 默认 | 含义/修改提示 |
 | --- | --- | --- |
-| model.name_or_path | Qwen/Qwen3-4B-Instruct-2507 | 两个独立分支的相同初始化基座；Shell 默认覆盖成本地目录 |
+| model.name_or_path | meta-llama/Llama-3.2-1B-Instruct | 两个独立分支的相同初始化基座；Shell 默认覆盖成本地目录 |
 | model.revision | main | 远程版本；保存时记录加载到的 commit，本地目录应不可变 |
 | model.dtype | bfloat16 | bfloat16 / float16 / float32；需硬件和 DeepSpeed 配置支持 |
 | model.attn_implementation | sdpa | eager / sdpa / flash_attention_2；公平对比应统一 |
@@ -75,7 +75,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero3_cpu bash scripts/ben
 | model.lora_r | 128 | encoder 和 decoder 各自的 LoRA rank |
 | model.lora_alpha | 32 | LoRA scaling 的 alpha，不能在加载旧 checkpoint 时随意修改 |
 | model.lora_dropout | 0.05 | 仅训练生效，推理 eval 关闭 |
-| data.prepared_dir | artifacts/prepared/default | 预处理版本目录；Shell PREPARED_DIR 默认覆盖 |
+| data.prepared_dir | artifacts/seco/Llama-3.2-1B-Instruct/benchmark/prepared/default | 预处理版本目录；Shell PREPARED_DIR 默认覆盖 |
 
 LoRA `bias=none`、`task_type=CAUSAL_LM`、`target_modules=all-linear`。基座参数冻结，保留原始双模型结构，不共享 encoder/decoder 权重。分块余弦仍调用同一个 `CosineSimilarity`；训练时重算分块中间值以避免所有广播中间值同时驻留。数值等价与梯度验证用例见 09；不同 GPU kernel/精度不承诺逐位相同。
 
@@ -108,7 +108,7 @@ LoRA `bias=none`、`task_type=CAUSAL_LM`、`target_modules=all-linear`。基座�
 ## 6. 保存与恢复
 
 ```text
-artifacts/runs/<RUN_NAME_UTC时间_随机后缀>/
+artifacts/seco/Llama-3.2-1B-Instruct/benchmark/runs/<RUN_NAME_UTC时间_随机后缀>/
   experiment.json          配置、软件版本、backend、world size、数据指纹
   data_manifest.json       本次训练的 prepared manifest 快照
   checkpoint-N/            双 LoRA 权重、Trainer/native ZeRO 状态、RNG、tokenizer
@@ -120,13 +120,13 @@ artifacts/runs/<RUN_NAME_UTC时间_随机后缀>/
 `model.safetensors` 只导出两个分支的 LoRA 张量；推理还需要完全相同的原始基座。普通 DDP checkpoint 保存优化器/scheduler/RNG；ZeRO checkpoint 还包含 DeepSpeed 自己的分片状态，不能只复制小的 safetensors 文件来恢复训练。ZeRO native checkpoint 可能仍很大，应保留整个 checkpoint-N 目录。
 
 ```bash
-RESUME=artifacts/runs/真实run/checkpoint-500 \
+RESUME=artifacts/seco/Llama-3.2-1B-Instruct/benchmark/runs/真实run/checkpoint-500 \
 CUDA_VISIBLE_DEVICES=0,1,2,3 NPROC_PER_NODE=4 BACKEND=zero2 \
-bash scripts/benchmark/sh/30_train.sh
+bash scripts/benchmark/sh/seco/30_train.sh
 
 # 延长累计目标；新目标必须大于断点 global_step。
-RESUME=artifacts/runs/真实run/checkpoint-500 MAX_STEPS=2000 \
-bash scripts/benchmark/sh/30_train.sh
+RESUME=artifacts/seco/Llama-3.2-1B-Instruct/benchmark/runs/真实run/checkpoint-500 MAX_STEPS=2000 \
+bash scripts/benchmark/sh/seco/30_train.sh
 ```
 
 Shell 自动以 checkpoint 的父目录作为 RUN_DIR；也可显式指定，但必须一致。恢复检查模型/数据配置、manifest 哈希、backend、world size，只有累计 max_steps 可变。使用远程 main 的恢复会继续使用断点中保存的 commit。改变模型、LoRA、压缩比数组、候选池或显卡进程数时开新实验。`final/` 和旧版导入目录没有 native optimizer 状态，不能用于 `RESUME`。

@@ -10,7 +10,7 @@
 
 ```bash
 python -m pip install -r requirements-niah.txt -r requirements-tools.txt
-bash scripts/niah/sh/90_validate.sh
+bash scripts/niah/sh/seco/90_validate.sh
 ```
 
 验证使用临时字符 tokenizer、临时正文、合成分数，不下载模型或数据：

@@ -14,4 +14,4 @@ if [[ "$INSTALL_DEEPSPEED" == 1 ]]; then
     "$PYTHON_BIN" -m pip install -r requirements-deepspeed.txt
 fi
 "$PYTHON_BIN" -m pip check
-"$PYTHON_BIN" scripts/benchmark/py/00_check_environment.py
+"$PYTHON_BIN" "$PY_ENTRY_DIR/00_check_environment.py"

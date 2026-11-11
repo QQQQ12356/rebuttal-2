@@ -4,6 +4,7 @@ from itertools import islice
 import time
 
 from _bootstrap import require_linux
+from seco.experiment import artifact_path
 from seco.downloads import iter_local_shards, retry_call
 from seco.io import project_path, read_json, sha256_file, write_json, write_jsonl
 
@@ -12,12 +13,12 @@ def main():
     require_linux()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", default="configs/benchmark/datasets.json")
-    parser.add_argument("--output", default="artifacts/raw")
+    parser.add_argument("--output", default=artifact_path("benchmark", "raw"))
     parser.add_argument("--role", choices=("all", "training", "benchmark"), default="all")
     parser.add_argument("--datasets", nargs="+", help="Canonical names; omit for all in selected roles")
     parser.add_argument("--train-limit", type=int, default=30000, help="First N raw rows per training source; 0 = all")
     parser.add_argument("--download-mode", choices=("local", "stream"), default="local")
-    parser.add_argument("--source-cache", default="artifacts/source_cache", help="Persistent Hub shard cache; retain for retries")
+    parser.add_argument("--source-cache", default=artifact_path("benchmark", "source_cache"), help="Persistent Hub shard cache; retain for retries")
     parser.add_argument("--download-attempts", type=int, default=6)
     parser.add_argument("--metadata-timeout", type=float, default=60, help="Hub dataset-info request timeout in seconds")
     parser.add_argument("--retry-delay", type=float, default=2, help="Initial backoff seconds, capped at 30s")

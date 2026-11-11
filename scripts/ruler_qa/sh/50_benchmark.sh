@@ -51,7 +51,7 @@ options=(--checkpoint "$CHECKPOINT" "${dataset_options[@]}" --output "$OUTPUT_DI
 [[ -n "$ATTENTION" ]] && options+=(--attention "$ATTENTION")
 [[ "$NO_MERGE" == 1 ]] && options+=(--no-merge)
 if [[ "$PLAN_ONLY" == 1 ]]; then
-    WORLD_SIZE="$NPROC_PER_NODE" "$PYTHON_BIN" scripts/ruler_qa/py/50_benchmark.py \
+    WORLD_SIZE="$NPROC_PER_NODE" "$PYTHON_BIN" "$PY_ENTRY_DIR/50_benchmark.py" \
         "${options[@]}" --plan-only "$@"
     exit 0
 fi
@@ -59,5 +59,5 @@ fi
 mkdir -p "$RULER_QA_ROOT/logs"
 LOG_FILE="$RULER_QA_ROOT/logs/benchmark_$(timestamp)_${RANDOM}.log"
 "$PYTHON_BIN" -m torch.distributed.run --standalone --nproc_per_node "$NPROC_PER_NODE" \
-    scripts/ruler_qa/py/50_benchmark.py "${options[@]}" "$@" 2>&1 | tee "$LOG_FILE"
+    "$PY_ENTRY_DIR/50_benchmark.py" "${options[@]}" "$@" 2>&1 | tee "$LOG_FILE"
 printf 'RULER QA benchmark: %s\nLog: %s\n' "$OUTPUT_DIR" "$LOG_FILE"

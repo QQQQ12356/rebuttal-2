@@ -3,10 +3,10 @@
 此验证覆盖数据读取、预算筛选、训练、checkpoint 加载、预测、评分和绘图。需要已下载模型和四份数据。以下路径用于首次运行，重复验证时为输出目录设置新版本名。
 
 ```bash
-export RULER_QA_ROOT=artifacts/ruler_qa
+export RULER_QA_ROOT=artifacts/seco/Llama-3.2-1B-Instruct/ruler_qa
 export CUDA_VISIBLE_DEVICES=0
 export NPROC_PER_NODE=1
-export MODEL_PATH=artifacts/models/Qwen3-4B-Instruct-2507
+export MODEL_PATH=artifacts/seco/Llama-3.2-1B-Instruct/model
 
 mkdir -p "$RULER_QA_ROOT"
 python - <<'PY'
@@ -29,16 +29,16 @@ export RUN_DIR="$RULER_QA_ROOT/runs/smoke_v1"
 export OUTPUT_DIR="$RULER_QA_ROOT/benchmarks/smoke_v1"
 export RATIOS='4 8'
 
-bash scripts/ruler_qa/sh/20_prepare_data.sh
-SPLIT=test PREPARED_DIR="$TEST_DIR" bash scripts/ruler_qa/sh/20_prepare_data.sh
-PLAN_ONLY=1 MAX_STEPS=1 bash scripts/ruler_qa/sh/30_train.sh
-MAX_STEPS=1 bash scripts/ruler_qa/sh/30_train.sh
+bash scripts/ruler_qa/sh/seco/20_prepare_data.sh
+SPLIT=test PREPARED_DIR="$TEST_DIR" bash scripts/ruler_qa/sh/seco/20_prepare_data.sh
+PLAN_ONLY=1 MAX_STEPS=1 bash scripts/ruler_qa/sh/seco/30_train.sh
+MAX_STEPS=1 bash scripts/ruler_qa/sh/seco/30_train.sh
 
 export CHECKPOINT="$RUN_DIR/final"
-PLAN_ONLY=1 bash scripts/ruler_qa/sh/50_benchmark.sh
-bash scripts/ruler_qa/sh/50_benchmark.sh
-PREDICTIONS="$OUTPUT_DIR/ratio_4/predictions.jsonl" bash scripts/ruler_qa/sh/60_score.sh
-BENCHMARK_DIR="$OUTPUT_DIR" bash scripts/ruler_qa/sh/70_plot_heatmap.sh
+PLAN_ONLY=1 bash scripts/ruler_qa/sh/seco/50_benchmark.sh
+bash scripts/ruler_qa/sh/seco/50_benchmark.sh
+PREDICTIONS="$OUTPUT_DIR/ratio_4/predictions.jsonl" bash scripts/ruler_qa/sh/seco/60_score.sh
+BENCHMARK_DIR="$OUTPUT_DIR" bash scripts/ruler_qa/sh/seco/70_plot_heatmap.sh
 ```
 
 - 训练 JSONL 应有 8 行，每任务 4 行。测试 JSONL 应有 8 行，每任务每长度 2 行。

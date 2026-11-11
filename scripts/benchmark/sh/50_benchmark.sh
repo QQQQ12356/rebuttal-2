@@ -4,11 +4,11 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/_common.sh"
 
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"    # Each process holds one complete encoder/decoder pair.
 NPROC_PER_NODE="${NPROC_PER_NODE:-1}"                       # More GPUs increase throughput, not per-model capacity.
-CHECKPOINT="${CHECKPOINT:-artifacts/runs/REPLACE_WITH_RUN/final_merged}"
-PREPARED_DIR="${PREPARED_DIR:-artifacts/prepared/default}"
-OUTPUT_DIR="${OUTPUT_DIR:-artifacts/benchmarks/benchmark_$(timestamp)_${RANDOM}}"
+CHECKPOINT="${CHECKPOINT:-$BENCHMARK_ROOT/runs/REPLACE_WITH_RUN/final_merged}"
+PREPARED_DIR="${PREPARED_DIR:-$BENCHMARK_ROOT/prepared/default}"
+OUTPUT_DIR="${OUTPUT_DIR:-$BENCHMARK_ROOT/benchmarks/benchmark_$(timestamp)_${RANDOM}}"
 DATASETS=(naturalqa 2wikimqa hotpotqa multinews)
-RATIOS=(4 8 16 32)                                       # Fixed ratios, each applied to exactly the same examples.
+read -r -a ratios <<< "${RATIOS:-4 8 16 32}"                                       # Fixed ratios, each applied to exactly the same examples.
 BATCH_SIZE="${BATCH_SIZE:-1}"                             # Increase only when each GPU has enough memory.
 SAMPLES="${SAMPLES:-0}"                                  # Per dataset; 0 = all preprocessed test examples.
 WORKERS="${WORKERS:-2}"
@@ -34,12 +34,12 @@ generation_options=(--decoding "$DECODING" --min-new-tokens "$MIN_NEW_TOKENS"
 
 extra=()
 [[ "$INCLUDE_CONTEXT" == 1 ]] && extra+=(--include-context)
-mkdir -p logs
-LOG_FILE="logs/benchmark_$(timestamp)_${RANDOM}.log"
+mkdir -p "$BENCHMARK_ROOT/logs"
+LOG_FILE="$BENCHMARK_ROOT/logs/benchmark_$(timestamp)_${RANDOM}.log"
 printf 'Log: %s\n' "$LOG_FILE"
 "$PYTHON_BIN" -m torch.distributed.run --standalone --nproc_per_node "$NPROC_PER_NODE" \
-    scripts/benchmark/py/50_benchmark.py --checkpoint "$CHECKPOINT" --prepared-dir "$PREPARED_DIR" \
-    --output "$OUTPUT_DIR" --datasets "${DATASETS[@]}" --ratios "${RATIOS[@]}" \
+    "$PY_ENTRY_DIR/50_benchmark.py" --checkpoint "$CHECKPOINT" --prepared-dir "$PREPARED_DIR" \
+    --output "$OUTPUT_DIR" --datasets "${DATASETS[@]}" --ratios "${ratios[@]}" \
     --batch-size "$BATCH_SIZE" --samples "$SAMPLES" --workers "$WORKERS" \
     --warmup-batches "$WARMUP_BATCHES" --qa-max-new-tokens "$QA_MAX_NEW_TOKENS" \
     --news-max-new-tokens "$NEWS_MAX_NEW_TOKENS" \

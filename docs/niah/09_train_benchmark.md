@@ -10,16 +10,16 @@
 4. 设置 `EVAL_TRAIN=1` 并先用 `PLAN_ONLY=1` 核对训练数据版本、样本量和压缩比。
 
 ```bash
-export PREPARED_DIR=artifacts/niah/prepared/train_v1
-export CHECKPOINT=artifacts/niah/runs/实际训练目录/final
+export PREPARED_DIR=artifacts/seco/Llama-3.2-1B-Instruct/niah/prepared/train_v1
+export CHECKPOINT=artifacts/seco/Llama-3.2-1B-Instruct/niah/runs/实际训练目录/final
 EVAL_TRAIN=1 PLAN_ONLY=1 MAX_TEST_SAMPLES=32 RATIOS='4 8' \
-    bash scripts/niah/sh/51_benchmark_train.sh
+    bash scripts/niah/sh/seco/51_benchmark_train.sh
 
 EVAL_TRAIN=1 MAX_TEST_SAMPLES=32 RATIOS='4 8' \
-    bash scripts/niah/sh/51_benchmark_train.sh
+    bash scripts/niah/sh/seco/51_benchmark_train.sh
 ```
 
-同样可以在 `50_benchmark.sh` 上用 `EVAL_TRAIN=1` 切换。专用 `51_benchmark_train.sh` 要求显式开启。执行独立网格评测时使用 `EVAL_TRAIN=0 bash scripts/niah/sh/50_benchmark.sh`。训练集评测无需运行 `21_prepare_grid.sh`。
+同样可以在 `50_benchmark.sh` 上用 `EVAL_TRAIN=1` 切换。专用 `51_benchmark_train.sh` 要求显式开启。执行独立网格评测时使用 `EVAL_TRAIN=0 bash scripts/niah/sh/seco/50_benchmark.sh`。训练集评测无需运行 `21_prepare_grid.sh`。
 
 预检会校验训练数据和 checkpoint 元数据，读取训练样本，检查选中样本的预处理解码预算，并打印原始样本数、每个压缩比的样本数、总生成条数、选中样本的最大 encoder 长度和进程数。真实模型位置上限在加载模型后检查。预检无需加载模型或分配 CUDA。
 
@@ -52,9 +52,9 @@ EVAL_TRAIN=1 MAX_TEST_SAMPLES=32 RATIOS='4 8' \
 直接运行 Python 预检的等价示例：
 
 ```bash
-python scripts/niah/py/51_benchmark_train.py --eval-train --plan-only \
+python scripts/niah/py/seco/51_benchmark_train.py --eval-train --plan-only \
     --checkpoint "$CHECKPOINT" --prepared-dir "$PREPARED_DIR" \
-    --output artifacts/niah/benchmarks/train_diagnostic \
+    --output artifacts/seco/Llama-3.2-1B-Instruct/niah/benchmarks/train_diagnostic \
     --ratios 4 8 --max-test-samples 32
 ```
 

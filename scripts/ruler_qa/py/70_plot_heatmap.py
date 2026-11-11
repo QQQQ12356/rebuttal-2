@@ -70,7 +70,8 @@ def main():
     metric_label = {"ruler_score": "RULER QA substring score", "em": "Exact match", "f1": "Token F1"}[args.metric]
     subset = " [SUBSET]" if "prepared_test_identity" in manifest else ""
     dataset_label = " [TRAIN]" if split == "train" else ""
-    fig.suptitle(f"SeCo · {metric_label}{dataset_label}{subset}")
+    method = metadata.get("experiment", {}).get("config", {}).get("model", {}).get("method", "seco")
+    fig.suptitle(f"{method.upper()} · {metric_label}{dataset_label}{subset}")
     fig.colorbar(image, ax=list(axes[0]), label="Score (%)")
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output, dpi=args.dpi)

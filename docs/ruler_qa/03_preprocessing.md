@@ -1,15 +1,15 @@
 # 03 数据预处理
 
 ```bash
-bash scripts/ruler_qa/sh/20_prepare_data.sh
-SPLIT=test bash scripts/ruler_qa/sh/20_prepare_data.sh
+bash scripts/ruler_qa/sh/seco/20_prepare_data.sh
+SPLIT=test bash scripts/ruler_qa/sh/seco/20_prepare_data.sh
 ```
 
 默认用 `configs/ruler_qa/prepare.json`。可复制为新配置，通过 `PREPARE_CONFIG` 指定副本，通过 `PREPARED_DIR` 指定新目录。每次只生成一个 split。输出包含对应的 `train.jsonl` 或 `test.jsonl` 及 `manifest.json`，整组文件就绪后发布到目标路径。
 
 ## 在脚本中调整预处理参数
 
-在 `scripts/ruler_qa/sh/20_prepare_data.sh` 顶部修改参数。留空时从 `PREPARE_CONFIG` 读取该项。比如把 `TRAIN_LENGTHS="${TRAIN_LENGTHS:-}"` 改为 `TRAIN_LENGTHS="${TRAIN_LENGTHS:-4096 8192}"`，即可在脚本中固定训练长度。长度列表用空格分隔。
+在 `scripts/ruler_qa/sh/seco/20_prepare_data.sh` 顶部修改参数。留空时从 `PREPARE_CONFIG` 读取该项。比如把 `TRAIN_LENGTHS="${TRAIN_LENGTHS:-}"` 改为 `TRAIN_LENGTHS="${TRAIN_LENGTHS:-4096 8192}"`，即可在脚本中固定训练长度。长度列表用空格分隔。
 
 | Bash 变量 | Python 参数 | 默认配置与作用 |
 | --- | --- | --- |
@@ -31,8 +31,8 @@ SPLIT=test bash scripts/ruler_qa/sh/20_prepare_data.sh
 
 ```bash
 SPLIT=test TEST_LENGTHS='4096 8192' TEST_SAMPLES_PER_TASK=20 \
-  PREPARED_DIR=artifacts/ruler_qa/prepared/test_small \
-  bash scripts/ruler_qa/sh/20_prepare_data.sh
+  PREPARED_DIR=artifacts/seco/Llama-3.2-1B-Instruct/ruler_qa/prepared/test_small \
+  bash scripts/ruler_qa/sh/seco/20_prepare_data.sh
 ```
 
 ## 输入与提问后缀
@@ -54,13 +54,13 @@ Who first introduced social insurance programs?
 | `PREPARED_DIR` | `--output` | 指定一个尚不存在的目录，避免覆盖旧数据。 |
 | `PREPARE_CONFIG` | `--config` | 指定长度档位、样本数和 token 预算等配置。 |
 
-长期修改可编辑 `scripts/ruler_qa/sh/20_prepare_data.sh` 顶部的 `PROMPT_STYLE` 默认值。单次运行可在命令前设置同名环境变量，或在脚本名后追加 `--prompt-style raw`。同时指定时以末尾的 CLI 参数为准。实际格式写入 `manifest.json` 的 `arguments.prompt_style`。
+长期修改可编辑 `scripts/ruler_qa/sh/seco/20_prepare_data.sh` 顶部的 `PROMPT_STYLE` 默认值。单次运行可在命令前设置同名环境变量，或在脚本名后追加 `--prompt-style raw`。同时指定时以末尾的 CLI 参数为准。实际格式写入 `manifest.json` 的 `arguments.prompt_style`。
 
 ```bash
-SPLIT=train PROMPT_STYLE=raw PREPARED_DIR=artifacts/ruler_qa/prepared/train_raw \
-  bash scripts/ruler_qa/sh/20_prepare_data.sh
-SPLIT=test PROMPT_STYLE=raw PREPARED_DIR=artifacts/ruler_qa/prepared/test_raw \
-  bash scripts/ruler_qa/sh/20_prepare_data.sh
+SPLIT=train PROMPT_STYLE=raw PREPARED_DIR=artifacts/seco/Llama-3.2-1B-Instruct/ruler_qa/prepared/train_raw \
+  bash scripts/ruler_qa/sh/seco/20_prepare_data.sh
+SPLIT=test PROMPT_STYLE=raw PREPARED_DIR=artifacts/seco/Llama-3.2-1B-Instruct/ruler_qa/prepared/test_raw \
+  bash scripts/ruler_qa/sh/seco/20_prepare_data.sh
 ```
 
 旧 JSONL 已存储 token IDs，修改格式参数后须重新预处理。训练时将 `PREPARED_DIR` 指向 `train_raw`，测试时将 `TEST_DIR` 指向 `test_raw`。若要评估新格式下训练和测试的完整流程，使用新训练数据训练，再用对应的新测试数据评测。与旧格式做对照时核对样本 ID，因为模板长度变化可能改变能装入预算的文档和入选问题。

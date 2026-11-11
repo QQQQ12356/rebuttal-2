@@ -1,18 +1,25 @@
 {
   "model": {
-    "name_or_path": "Qwen/Qwen3-4B-Instruct-2507",
+    "name_or_path": "meta-llama/Llama-3.2-1B-Instruct",
     "revision": "main",
     "dtype": "bfloat16",
     "attn_implementation": "sdpa",
     "similarity_chunk_tokens": 16,
     "compress_ratio": 16,
     "ratio_mode": "random",
-    "random_ratios": [4, 8, 16, 32],
+    "random_ratios": [
+      4,
+      8,
+      16,
+      32
+    ],
     "lora_r": 128,
     "lora_alpha": 32,
     "lora_dropout": 0.05
   },
-  "data": {"prepared_dir": "artifacts/prepared/default"},
+  "data": {
+    "prepared_dir": "artifacts/seco/Llama-3.2-1B-Instruct/benchmark/prepared/default"
+  },
   "training": {
     "per_device_train_batch_size": 1,
     "gradient_accumulation_steps": 8,
@@ -22,7 +29,7 @@
     "lr_scheduler_type": "cosine",
     "warmup_ratio": 0.1,
     "weight_decay": 0.01,
-    "max_grad_norm": 1.0,
+    "max_grad_norm": 1,
     "gradient_checkpointing": true,
     "save_strategy": "steps",
     "save_steps": 500,

@@ -6,6 +6,7 @@ import math
 import random
 
 from _bootstrap import require_linux
+from seco.experiment import artifact_path, default_model_path
 from seco.data import (BENCHMARKS, DATASETS, length_reason, normalize_record, reservoir_add,
                        tokenize_record, tokenizer_fingerprint)
 from seco.io import iter_jsonl, model_source, project_path, read_json, sha256_file, write_json, write_jsonl
@@ -14,9 +15,9 @@ from seco.io import iter_jsonl, model_source, project_path, read_json, sha256_fi
 def main():
     require_linux()
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--raw-dir", default="artifacts/raw")
-    parser.add_argument("--output", default="artifacts/prepared/default")
-    parser.add_argument("--model", default="artifacts/models/Qwen3-4B-Instruct-2507")
+    parser.add_argument("--raw-dir", default=artifact_path("benchmark", "raw"))
+    parser.add_argument("--output", default=artifact_path("benchmark", "prepared/default"))
+    parser.add_argument("--model", default=default_model_path())
     parser.add_argument("--revision", default="main")
     parser.add_argument("--datasets", nargs="+", choices=DATASETS, default=list(DATASETS))
     parser.add_argument("--train-samples", type=int, nargs="+", default=[5000],
