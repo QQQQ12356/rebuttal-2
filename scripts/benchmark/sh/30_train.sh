@@ -7,7 +7,8 @@ NPROC_PER_NODE="${NPROC_PER_NODE:-4}"                     # One process per visi
 NNODES="${NNODES:-1}"                                   # Nodes; all nodes share data/model/run storage.
 NODE_RANK="${NODE_RANK:-0}"                             # 0..NNODES-1, unique on each node.
 MASTER_ADDR="${MASTER_ADDR:-127.0.0.1}"                   # Rank-zero hostname/IP; change for multiple nodes.
-MASTER_PORT="${MASTER_PORT:-29500}"
+source "$PROJECT_ROOT/scripts/_train_ports.sh"
+set_training_port 29500
 BACKEND="${BACKEND:-zero2}"                             # ddp / zero2 / zero2_cpu / zero3_cpu.
 CONFIG="${CONFIG:-configs/benchmark/$METHOD/train.json}"                   # LoRA, ratio mode/array, optimizer and schedule.
 MODEL_PATH="${MODEL_PATH:-$DEFAULT_MODEL_PATH}"
@@ -35,6 +36,7 @@ if [[ "$PLAN_ONLY" == 1 ]]; then
 fi
 mkdir -p "$BENCHMARK_ROOT/logs"
 LOG_FILE="$BENCHMARK_ROOT/logs/train_$(timestamp)_node${NODE_RANK}_${RANDOM}.log"
+printf 'torchrun rendezvous: %s:%s\n' "$MASTER_ADDR" "$MASTER_PORT"
 "$PYTHON_BIN" -m torch.distributed.run \
     --nnodes "$NNODES" --node_rank "$NODE_RANK" --nproc_per_node "$NPROC_PER_NODE" \
     --master_addr "$MASTER_ADDR" --master_port "$MASTER_PORT" \

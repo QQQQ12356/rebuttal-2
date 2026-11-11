@@ -22,6 +22,7 @@
 | `MAX_STEPS` | `--max-steps` | 空值使用 JSON，正数设置累计 optimizer updates |
 | `PLAN_ONLY` | `--plan-only` | 设为 1 时仅做预检 |
 | `CUDA_VISIBLE_DEVICES` / `NPROC_PER_NODE` | torchrun 环境及参数 | 预训练默认 `0` / `1`，每张可见 GPU 对应一个进程 |
+| `MASTER_PORT` | torchrun `--master_port` | 预训练默认 29620。重复并行启动预训练时为各 run 分配独立端口。微调端口见[训练指南](../03_training.md#并行运行的默认端口) |
 | `BACKEND` | `--backend` | 预训练默认 `ddp`，可选 `zero2` 和 `zero2_cpu` |
 | `BACKBONE` / `ICAE_PRETRAIN_ROOT` | 环境变量 | 目录中的基座名和预训练产物根，替换基座时同时改实际模型路径 |
 | `PYTHON_BIN` / `ARTIFACT_ROOT` | 环境变量 | Linux Python 解释器和实验总根目录 |

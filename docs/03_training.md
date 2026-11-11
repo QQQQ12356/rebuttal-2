@@ -24,6 +24,16 @@ CUDA_VISIBLE_DEVICES=0 NPROC_PER_NODE=1 BACKEND=ddp bash "$step"
 | 多机 | 每节点独立设置 `NODE_RANK`，共用 `NNODES`、`MASTER_ADDR`、`MASTER_PORT`、`RUN_DIR` 与数据路径 |
 | 恢复 | `RESUME=<run>/checkpoint-N`，保持原方法、数据、配置和并行设置。可通过 `MAX_STEPS` 提高累计训练目标 |
 
+## 并行运行的默认端口
+
+| 训练任务 | SeCo | COMI | ICAE | RAM |
+| --- | --- | --- | --- | --- |
+| Benchmark | 29500 | 29501 | 29502 | 29503 |
+| NIAH | 29600 | 29601 | 29602 | 29603 |
+| RULER QA | 29610 | 29611 | 29612 | 29613 |
+
+ICAE 预训练使用 29620。重复并行启动同一个任务和方法时，为另一份 run 设置独立端口，例如 `MASTER_PORT=29701 bash scripts/niah/sh/comi/30_train.sh`。同一个多机 run 的所有节点使用相同端口。并行 run 的 GPU 可通过 `CUDA_VISIBLE_DEVICES` 分配。评测脚本使用 torchrun 的 `--standalone` 自动选择端口。
+
 `checkpoint-N` 用于原生恢复。`final` 保存推理用 LoRA 和方法参数，需要原基座。运行 `40_merge_lora.sh` 可将其导出为本地自包含模型，融合分支与记忆/对齐参数随模型一起保存。
 
 ```bash

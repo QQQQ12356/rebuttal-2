@@ -4,6 +4,7 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/_common.sh"
 
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 NPROC_PER_NODE="${NPROC_PER_NODE:-1}"
+MASTER_PORT="${MASTER_PORT:-29620}"              # Separate from all task fine-tuning ports.
 BACKEND="${BACKEND:-ddp}"
 CONFIG="${CONFIG:-configs/icae/pretrain.json}"
 MODEL_PATH="${MODEL_PATH:-$DEFAULT_MODEL_PATH}"
@@ -27,6 +28,8 @@ if [[ "$PLAN_ONLY" == 1 ]]; then
 fi
 mkdir -p "$ICAE_PRETRAIN_ROOT/logs"
 log="$ICAE_PRETRAIN_ROOT/logs/pretrain_$(timestamp)_${RANDOM}.log"
-"$PYTHON_BIN" -m torch.distributed.run --standalone --nproc_per_node "$NPROC_PER_NODE" \
+printf 'torchrun rendezvous: 127.0.0.1:%s\n' "$MASTER_PORT"
+"$PYTHON_BIN" -m torch.distributed.run --nnodes 1 --nproc_per_node "$NPROC_PER_NODE" \
+    --master_addr 127.0.0.1 --master_port "$MASTER_PORT" \
     "$entry" "${options[@]}" "$@" 2>&1 | tee "$log"
 printf 'ICAE pretraining run: %s\nLog: %s\n' "$RUN_DIR" "$log"

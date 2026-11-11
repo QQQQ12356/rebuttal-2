@@ -66,7 +66,7 @@
 | CUDA_VISIBLE_DEVICES | 0,1,2,3 | 本节点物理 GPU 列表 |
 | NPROC_PER_NODE | 4 | 本节点进程数，应与参与 GPU 数匹配 |
 | NNODES / NODE_RANK | 1 / 0 | 节点总数 / 当前节点编号 |
-| MASTER_ADDR / MASTER_PORT | 127.0.0.1 / 29500 | rendezvous 地址/端口，多节点需可访问主节点 |
+| MASTER_ADDR / MASTER_PORT | 127.0.0.1 / 29500–29503 | 按 SeCo、COMI、ICAE、RAM 分配，支持覆盖。多节点需可访问主节点 |
 | BACKEND | zero2 | ddp / zero2 / zero2_cpu / zero3_cpu |
 | CONFIG | configs/benchmark/seco/train.json | LoRA、dtype、attention、压缩比数组、优化器等 |
 | MODEL_PATH | 默认本地模型目录 | 覆盖 JSON 基座路径 |

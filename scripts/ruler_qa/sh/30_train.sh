@@ -7,7 +7,8 @@ NPROC_PER_NODE="${NPROC_PER_NODE:-1}"
 NNODES="${NNODES:-1}"
 NODE_RANK="${NODE_RANK:-0}"
 MASTER_ADDR="${MASTER_ADDR:-127.0.0.1}"
-MASTER_PORT="${MASTER_PORT:-29610}"
+source "$PROJECT_ROOT/scripts/_train_ports.sh"
+set_training_port 29610
 BACKEND="${BACKEND:-ddp}"
 CONFIG="${CONFIG:-configs/ruler_qa/$METHOD/train.json}"
 PREPARED_DIR="${PREPARED_DIR:-$RULER_QA_ROOT/prepared/train_v1}"
@@ -39,6 +40,7 @@ fi
 
 mkdir -p "$RULER_QA_ROOT/logs"
 LOG_FILE="$RULER_QA_ROOT/logs/train_$(timestamp)_node${NODE_RANK}_${RANDOM}.log"
+printf 'torchrun rendezvous: %s:%s\n' "$MASTER_ADDR" "$MASTER_PORT"
 "$PYTHON_BIN" -m torch.distributed.run --nnodes "$NNODES" --node_rank "$NODE_RANK" \
     --nproc_per_node "$NPROC_PER_NODE" --master_addr "$MASTER_ADDR" --master_port "$MASTER_PORT" \
     "$PY_ENTRY_DIR/30_train.py" "${options[@]}" "$@" 2>&1 | tee "$LOG_FILE"

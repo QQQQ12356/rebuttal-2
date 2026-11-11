@@ -57,7 +57,7 @@
 | `20` | `RAW_DIR`、`PREPARED_DIR`、`MODEL_PATH`、`REVISION` | 原始数据目录、新输出目录、本地快照或 Hub ID、Hub revision。输出默认是 `prepared/train_v1` 或 `prepared/test_v1` |
 | `30` | `CONFIG`、`PREPARED_DIR`、`MODEL_PATH` | 训练 JSON、训练数据目录、基座覆盖项。默认配置在本地快照存在时优先用本地快照 |
 | `30` | `CUDA_VISIBLE_DEVICES`、`NPROC_PER_NODE` | 默认 `0` 和 `1`。每 GPU 一个进程，进程数需匹配可见设备 |
-| `30` | `NNODES`、`NODE_RANK`、`MASTER_ADDR`、`MASTER_PORT` | 默认 `1`、`0`、`127.0.0.1`、`29610`。多节点需配置实际主节点地址及各节点序号，并共享 `RUN_DIR` 和数据 |
+| `30` | `NNODES`、`NODE_RANK`、`MASTER_ADDR`、`MASTER_PORT` | 默认 `1`、`0`、`127.0.0.1`，端口按 SeCo、COMI、ICAE、RAM 使用 `29610–29613`。多节点需配置主节点地址及各节点序号，并共享 `RUN_DIR` 和数据 |
 | `30` | `BACKEND`、`RUN_DIR` | 默认 `ddp` 和 UTC 时间戳加随机后缀目录 |
 | `30` | `RESUME`、`MAX_STEPS`、`PLAN_ONLY` | 可续训检查点、累计步上限、预检开关 `0/1` |
 | `40` | `CHECKPOINT`、`MERGED_DIR`、`MERGE_DEVICE`、`MODEL_PATH` | 输入适配器、合并输出（默认原路径加 `_merged`）、`cpu` 或 `cuda`、可选迁移后的同版本基座 |

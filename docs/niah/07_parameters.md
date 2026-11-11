@@ -47,7 +47,7 @@ NIAH Shell 位于 scripts/niah/sh，Python 位于 scripts/niah/py。标量和评
 | --- | --- | --- |
 | CUDA_VISIBLE_DEVICES / NPROC_PER_NODE | 0,1,2,3 / 4 | 每节点物理 GPU 列表 / 进程数 |
 | NNODES / NODE_RANK | 1 / 0 | 多节点数量与当前节点编号 |
-| MASTER_ADDR / MASTER_PORT | 127.0.0.1 / 29600 | 静态 rendezvous 地址/端口；多节点改为主节点可访问地址 |
+| MASTER_ADDR / MASTER_PORT | 127.0.0.1 / 29600–29603 | 按 SeCo、COMI、ICAE、RAM 分配，支持覆盖。多节点使用主节点可访问地址 |
 | BACKEND | zero2 | ddp/zero2/zero2_cpu/zero3_cpu |
 | CONFIG | configs/niah/seco/train.json | 独立训练 JSON |
 | MODEL_PATH / PREPARED_DIR | 默认模型 / NIAH_ROOT/prepared/train_v1 | 覆盖 JSON 的模型/数据路径 |
