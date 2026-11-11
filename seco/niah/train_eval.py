@@ -5,7 +5,7 @@ from seco.data import reservoir_add
 from seco.io import iter_jsonl, read_json, sha256_file
 
 
-def load_training_rows(prepared, experiment, limit):
+def load_training_rows(prepared, experiment, limit, *, shuffle=False, seed=None):
     manifest_path = prepared / "manifest.json"
     manifest = read_json(manifest_path)
     if (manifest.get("format"), manifest.get("task"), manifest.get("kind")) != ("seco-data-v1", "niah", "train"):
@@ -18,7 +18,8 @@ def load_training_rows(prepared, experiment, limit):
     data_path = prepared / "train.jsonl"
     if sha256_file(data_path) != manifest["files"]["train.jsonl"]:
         raise ValueError("NIAH training data hash mismatch")
-    rng = random.Random(manifest["preparation"]["seed"])
+    selection_seed = seed if shuffle and seed is not None else manifest["preparation"]["seed"]
+    rng = random.Random(selection_seed)
     rows, seen = [], set()
     for count, row in enumerate(iter_jsonl(data_path), 1):
         if row["id"] in seen:
@@ -27,4 +28,6 @@ def load_training_rows(prepared, experiment, limit):
         reservoir_add(rows, row, count, limit or 0, rng)
     if not rows:
         raise ValueError("No prepared NIAH training samples")
+    if shuffle:
+        rng.shuffle(rows)
     return manifest, manifest_hash, rows, len(seen)

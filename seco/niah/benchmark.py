@@ -3,6 +3,7 @@ import argparse
 import json
 import math
 import os
+import random
 import time
 
 from seco.data import Collator, limit_grid_rows, tokenizer_fingerprint
@@ -25,12 +26,14 @@ def main(*, train_only=False):
     parser.add_argument("--output", required=True, help="New independent NIAH benchmark directory")
     parser.add_argument("--ratios", nargs="+", type=float, default=[4, 8, 16, 32])
     parser.add_argument("--max-test-samples", type=int, help="Cap the total number of test samples per ratio")
+    parser.add_argument("--shuffle", action="store_true", help="Use the generation seed for sample selection and order")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--warmup-batches", type=int, default=1)
     parser.add_argument("--max-new-tokens", type=int, default=64, help="Generation cap within the prepared budget (default: 64)")
     add_generation_arguments(parser)
     parser.add_argument("--attention", choices=("eager", "sdpa", "flash_attention_2"))
+    parser.add_argument("--dtype", choices=("bfloat16", "float16", "float32"), help="Default: checkpoint dtype")
     parser.add_argument("--no-merge", action="store_true")
     parser.add_argument("--plan-only", action="store_true", help="Verify inputs and report workload without importing torch")
     parser.add_argument("--seed", type=int, help="Generation seed override (defaults to the dataset seed)")
@@ -40,8 +43,9 @@ def main(*, train_only=False):
         parser.error("Training-set evaluation requires --eval-train")
     if (args.eval_train and args.grid_dir) or (not args.eval_train and args.prepared_dir):
         parser.error("Use --prepared-dir with --eval-train, or --grid-dir for held-out evaluation")
-    if args.max_test_samples is not None and args.max_test_samples < 1:
-        parser.error("--max-test-samples must be positive")
+    if args.max_test_samples is not None and args.max_test_samples < 0:
+        parser.error("--max-test-samples must be nonnegative; 0 means all")
+    args.max_test_samples = args.max_test_samples or None
     if len(set(args.ratios)) != len(args.ratios) or not args.ratios or any(not math.isfinite(r) or r < 1 for r in args.ratios):
         parser.error("ratios must be distinct finite numbers >= 1")
     if args.batch_size < 1 or min(args.workers, args.warmup_batches) < 0:
@@ -62,7 +66,8 @@ def main(*, train_only=False):
             raise FileNotFoundError(checkpoint_file)
         args.prepared_dir = args.prepared_dir or artifact_path("niah", "prepared/train_v1")
         prepared = project_path(args.prepared_dir)
-        manifest, manifest_hash, rows, total = load_training_rows(prepared, experiment, args.max_test_samples)
+        manifest, manifest_hash, rows, total = load_training_rows(
+            prepared, experiment, args.max_test_samples, shuffle=args.shuffle, seed=args.seed)
         settings = manifest["arguments"]
         if min(args.ratios) < settings["min_ratio"]:
             raise ValueError("Ratio below training data min_ratio")
@@ -110,7 +115,7 @@ def main(*, train_only=False):
     generation_seed = seed if args.seed is None else args.seed
     set_seed(generation_seed + rank)
     log_progress(f"{worker_label} loading checkpoint {source}")
-    model, experiment = load_checkpoint_model(source, model_path=args.model, attention=args.attention)
+    model, experiment = load_checkpoint_model(source, model_path=args.model, attention=args.attention, dtype=args.dtype)
     if tokenizer_fingerprint(model.tokenizer) != manifest["tokenizer_fingerprint"]:
         raise ValueError("Prepared NIAH tokenizer differs from the loaded model tokenizer")
     model.to(device).eval()
@@ -120,6 +125,9 @@ def main(*, train_only=False):
     if not args.eval_train:
         rows = list(iter_jsonl(prepared / "grid.jsonl"))
         validate_test_rows(rows, manifest, training_identity)
+        if args.shuffle:
+            random.Random(generation_seed).shuffle(rows)
+        rows = limit_grid_rows(rows, args.max_test_samples, cell_keys=("sequence_length", "depth_percent"))
     for row in rows:
         decoder_length = decoder_tokens(row, args, model_config)
         budget = settings["max_decoder_tokens"] if args.eval_train else manifest["grid"]["max_decoder_tokens"]
@@ -127,8 +135,6 @@ def main(*, train_only=False):
             raise ValueError(f"NIAH sample exceeds the prepared decoder budget: {row['id']}")
         if max(len(row["input_ids"]), decoder_length) > model.config.max_position_embeddings:
             raise ValueError(f"NIAH sample exceeds model position limit: {row['id']}")
-    if not args.eval_train:
-        rows = limit_grid_rows(rows, args.max_test_samples, cell_keys=("sequence_length", "depth_percent"))
     expected_ids = {row["id"] for row in rows}
     selection = {}
     if args.eval_train or len(rows) < manifest["count"]:

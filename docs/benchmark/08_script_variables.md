@@ -98,8 +98,10 @@
 | 同上 | CHECKPOINT | 必改为真实 adapter/merged 目录 |
 | 同上 | PREPARED_DIR | artifacts/seco/Llama-3.2-1B-Instruct/benchmark/prepared/default |
 | 同上 | OUTPUT_DIR | 自动唯一 benchmark 目录 |
-| 同上 | DATASETS / RATIOS | 四个测试源 / [4,8,16,32] |
-| 同上 | BATCH_SIZE / SAMPLES | 1 / 0；samples=0 使用全部 prepared 测试样本 |
+| 同上 | DATASETS / RATIOS | 空使用当前 split 的全部数据集，比例默认 [4,8,16,32] |
+| 同上 | BATCH_SIZE / SAMPLES | 1 / 0；SAMPLES 限制每个数据集，0 使用全部 |
+| 同上 | EVAL_TRAIN / MAX_TEST_SAMPLES | 默认 0 / 0。前者选训练集，后者限制每个比例的总样本数 |
+| 同上 | SHUFFLE / PLAN_ONLY | 默认 0 / 0。可开启种子选样或只查看评测计划 |
 | 同上 | WORKERS / WARMUP_BATCHES | 2 / 1；预热不会漏评样本 |
 | 同上 | QA_MAX_NEW_TOKENS / NEWS_MAX_NEW_TOKENS | 64 / 512，均不得超过预处理生成预算 |
 | 同上 | REPETITION_PENALTY / SEED | 1.0 / 42 |

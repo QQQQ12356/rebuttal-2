@@ -1,4 +1,4 @@
-"""Shared decoding options for SeCo evaluations."""
+"""Shared decoding options for compression experiments."""
 
 import math
 

@@ -23,8 +23,10 @@ MIN_NEW_TOKENS="${MIN_NEW_TOKENS:-0}"                     # Suppress EOS before 
 REPETITION_PENALTY="${REPETITION_PENALTY:-1.0}"           # 1.0 disables the repetition penalty.
 SEED="${SEED:-42}"                                        # Generation seed.
 MAX_TEST_SAMPLES="${MAX_TEST_SAMPLES:-}"
+SHUFFLE="${SHUFFLE:-0}"
 MODEL_PATH="${MODEL_PATH:-}"
 ATTENTION="${ATTENTION:-}"
+DTYPE="${DTYPE:-}" # Empty uses the checkpoint precision.
 NO_MERGE="${NO_MERGE:-0}"
 PLAN_ONLY="${PLAN_ONLY:-0}"
 
@@ -47,8 +49,10 @@ options=(--checkpoint "$CHECKPOINT" "${dataset_options[@]}" --output "$OUTPUT_DI
          --warmup-batches "$WARMUP_BATCHES" --max-new-tokens "$MAX_NEW_TOKENS"
          "${generation_options[@]}")
 [[ -n "$MAX_TEST_SAMPLES" ]] && options+=(--max-test-samples "$MAX_TEST_SAMPLES")
+[[ "$SHUFFLE" == 1 ]] && options+=(--shuffle)
 [[ -n "$MODEL_PATH" ]] && options+=(--model "$MODEL_PATH")
 [[ -n "$ATTENTION" ]] && options+=(--attention "$ATTENTION")
+[[ -n "$DTYPE" ]] && options+=(--dtype "$DTYPE")
 [[ "$NO_MERGE" == 1 ]] && options+=(--no-merge)
 if [[ "$PLAN_ONLY" == 1 ]]; then
     WORLD_SIZE="$NPROC_PER_NODE" "$PYTHON_BIN" "$PY_ENTRY_DIR/50_benchmark.py" \

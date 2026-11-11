@@ -6,8 +6,8 @@ import random
 import time
 
 from _bootstrap import require_linux
-from seco.experiment import artifact_path, memory_token_bound, validate_ratios
-from seco.data import BENCHMARKS, Collator, tokenizer_fingerprint
+from seco.experiment import artifact_path, check_method, memory_token_bound, validate_ratios
+from seco.data import BENCHMARKS, DATASETS, Collator, limit_grid_rows, tokenizer_fingerprint
 from seco.generation import add_generation_arguments, generation_options
 from seco.io import iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.metrics import score_answer, summarize
@@ -21,10 +21,12 @@ def main():
     parser.add_argument("--model", help="Override base location for an adapter checkpoint")
     parser.add_argument("--prepared-dir", default=artifact_path("benchmark", "prepared/default"))
     parser.add_argument("--output", required=True, help="New benchmark directory; never overwrite a previous run")
-    parser.add_argument("--datasets", nargs="+", choices=BENCHMARKS, default=list(BENCHMARKS))
+    parser.add_argument("--datasets", nargs="+", choices=DATASETS, help="Default: all prepared datasets for the split")
+    parser.add_argument("--eval-train", action="store_true", help="Evaluate the checkpoint's prepared training split")
     parser.add_argument("--ratios", nargs="+", type=float, default=[4, 8, 16, 32])
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--samples", type=int, default=0, help="Per dataset; 0 = all prepared samples")
+    parser.add_argument("--max-test-samples", type=int, default=0, help="Global cap after --samples; 0 = unlimited")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--shuffle", action="store_true")
     parser.add_argument("--workers", type=int, default=2)
@@ -33,18 +35,66 @@ def main():
     parser.add_argument("--news-max-new-tokens", type=int, default=512, help="MultiNews generation cap (default: 512)")
     add_generation_arguments(parser)
     parser.add_argument("--attention", choices=("eager", "sdpa", "flash_attention_2"))
+    parser.add_argument("--dtype", choices=("bfloat16", "float16", "float32"), help="Default: checkpoint dtype")
     parser.add_argument("--no-merge", action="store_true", help="Keep LoRA modules active for equivalence comparisons")
     parser.add_argument("--include-context", action="store_true", help="Include source context in prediction JSONL/Excel details")
+    parser.add_argument("--plan-only", action="store_true", help="Validate and print the sample selection without CUDA")
     args = parser.parse_args()
     if not args.ratios or any(not math.isfinite(r) or r < 1 for r in args.ratios):
         parser.error("Ratios must be finite and >= 1")
-    if args.batch_size < 1 or min(args.samples, args.workers, args.warmup_batches) < 0:
+    if args.batch_size < 1 or min(args.samples, args.max_test_samples, args.workers, args.warmup_batches) < 0:
         parser.error("Invalid batch size, samples, workers or warmup")
+    output, prepared, source = project_path(args.output), project_path(args.prepared_dir), project_path(args.checkpoint)
+    manifest_path = prepared / "manifest.json"
+    manifest = read_json(manifest_path)
+    if manifest.get("format") != "seco-data-v1" or manifest.get("task", "qa") != "qa":
+        raise ValueError("Expected prepared Benchmark data")
+    experiment = read_json(source / "experiment.json")
+    model_config = experiment["config"]["model"]
+    check_method(model_config)
+    validate_ratios(model_config, args.ratios)
+    split = "train" if args.eval_train else "test"
+    available = tuple(name for name in (DATASETS if args.eval_train else BENCHMARKS)
+                      if f"{split}/{name}.jsonl" in manifest["files"])
+    args.datasets = args.datasets or list(available)
+    if not args.datasets or set(args.datasets) - set(available):
+        parser.error(f"Available {split} datasets: {', '.join(available)}")
+    manifest_hash = sha256_file(manifest_path)
+    if args.eval_train and (experiment.get("task") != "qa"
+                            or experiment.get("data_manifest_sha256") != manifest_hash
+                            or experiment.get("tokenizer_fingerprint") != manifest["tokenizer_fingerprint"]):
+        raise ValueError("Checkpoint and --prepared-dir must refer to the same Benchmark training manifest")
     limits = {name: args.news_max_new_tokens if name == "multinews" else args.qa_max_new_tokens
               for name in args.datasets}
     decoding = {name: generation_options(parser, args, limit) for name, limit in limits.items()}
     if len(set(args.ratios)) != len(args.ratios) or len(set(args.datasets)) != len(args.datasets):
         parser.error("Duplicate ratios/datasets would duplicate predictions")
+    settings = manifest["arguments"]
+    if min(args.ratios) < settings["min_ratio"] or max(limits.values()) > settings["test_generation_budget"]:
+        raise ValueError("Ratio or generation length is outside the prepared evaluation budget")
+    selected = []
+    for index, name in enumerate(args.datasets):
+        relative = f"{split}/{name}.jsonl"
+        if sha256_file(prepared / relative) != manifest["files"][relative]:
+            raise ValueError(f"Prepared data hash mismatch: {relative}")
+        rows = list(iter_jsonl(prepared / relative))
+        if args.shuffle:
+            random.Random(args.seed + index).shuffle(rows)
+        selected.extend(rows[:args.samples] if args.samples else rows)
+    selected = limit_grid_rows(selected, args.max_test_samples or None, cell_keys=("dataset",))
+    ids = [row["id"] for row in selected]
+    if not ids or len(ids) != len(set(ids)):
+        raise ValueError("Evaluation requires nonempty samples with unique IDs")
+    for row in selected:
+        memory = max(memory_token_bound(model_config, row["context_tokens"], ratio) for ratio in args.ratios)
+        if memory + row["prompt_tokens"] + limits[row["dataset"]] > settings["max_decoder_tokens"]:
+            raise ValueError(f"Sample exceeds the prepared decoder budget: {row['id']}")
+    identity_file = "artifact.json" if (source / "artifact.json").exists() else "model.safetensors"
+    if not (source / identity_file).is_file():
+        raise FileNotFoundError(source / identity_file)
+    if args.plan_only:
+        print(f"Benchmark {split}: {len(selected)} samples per ratio, {len(selected) * len(args.ratios)} generations")
+        return
     import torch
     import torch.distributed as dist
     from torch.utils.data import DataLoader
@@ -60,47 +110,23 @@ def main():
     device = torch.device("cuda", local_rank)
     if world > 1:
         dist.init_process_group("nccl")
-    output, prepared, source = project_path(args.output), project_path(args.prepared_dir), project_path(args.checkpoint)
     if rank == 0:
         output.mkdir(parents=True, exist_ok=False)
     if world > 1:
         dist.barrier()
     set_seed(args.seed + rank)
-    manifest = read_json(prepared / "manifest.json")
-    if min(args.ratios) < manifest["arguments"]["min_ratio"]:
-        raise ValueError("Evaluation ratio is below preprocessing --min-ratio; preprocess again")
-    requested_budget = max(limits.values())
-    if requested_budget > manifest["arguments"]["test_generation_budget"]:
-        raise ValueError("Generation exceeds preprocessing test generation budget; preprocess again")
     log_progress(f"{worker_label} loading checkpoint {source}")
-    model, experiment = load_checkpoint_model(source, model_path=args.model, attention=args.attention)
-    validate_ratios(model.model_config, args.ratios)
+    model, experiment = load_checkpoint_model(source, model_path=args.model, attention=args.attention, dtype=args.dtype)
     if tokenizer_fingerprint(model.tokenizer) != manifest["tokenizer_fingerprint"]:
         raise ValueError("Evaluation tokenizer differs from preprocessing")
     model.to(device).eval()
     if not args.no_merge:
         model.merge_for_inference()
-    log_progress(f"{worker_label} selecting test samples")
-    selected = []
-    for index, name in enumerate(args.datasets):
-        relative = f"test/{name}.jsonl"
-        if sha256_file(prepared / relative) != manifest["files"][relative]:
-            raise ValueError(f"Prepared test data hash mismatch: {relative}")
-        rows = list(iter_jsonl(prepared / relative))
-        if args.shuffle:
-            random.Random(args.seed + index).shuffle(rows)
-        selected.extend(rows[:args.samples] if args.samples else rows)
-    ids = [row["id"] for row in selected]
-    if len(ids) != len(set(ids)):
-        raise ValueError("Evaluation examples do not have unique IDs")
-    if not ids:
-        raise ValueError("No evaluation examples selected")
     if rank == 0:
-        identity_file = "artifact.json" if (source / "artifact.json").exists() else "model.safetensors"
-        write_json(output / "benchmark.json", {"arguments": vars(args), "experiment": experiment,
+        write_json(output / "benchmark.json", {"split": split, "arguments": vars(args), "experiment": experiment,
                    "checkpoint_identity": sha256_file(source / identity_file),
                    "generation_by_dataset": decoding,
-                   "data_manifest_sha256": sha256_file(prepared / "manifest.json"),
+                   "data_manifest_sha256": manifest_hash,
                    "samples": len(selected), "world_size": world, "gpu": torch.cuda.get_device_name(device),
                    "torch": torch.__version__, "attention": model.model_config["attn_implementation"],
                    "merged": model.merged, "timing": "amortized seconds per sample within each generation batch; includes encoder, compression and decoder; excludes loading/tokenization/H2D"})
@@ -123,8 +149,6 @@ def main():
             for row in rows:
                 centers = memory_token_bound(model.model_config, row["context_tokens"], ratio)
                 decoder_length = centers + row["prompt_tokens"] + max_new
-                if decoder_length > manifest["arguments"]["max_decoder_tokens"]:
-                    raise ValueError(f"Sample exceeds the prepared decoder budget: {row['id']}")
                 if max(len(row["input_ids"]), decoder_length) > model.config.max_position_embeddings:
                     raise ValueError(f"Sample exceeds model position limit: {row['id']}")
             progress = BatchProgress(f"{label} dataset={name}", len(rows))
@@ -171,7 +195,7 @@ def main():
             combined.sort(key=lambda row: order[row["id"]])
             write_jsonl(directory / "predictions.jsonl", combined)
             metrics = summarize(combined)
-            metrics.update({"ratio": ratio, "benchmark": str(output),
+            metrics.update({"ratio": ratio, "split": split, "benchmark": str(output),
                             "mean_seconds_per_sample": sum(row["seconds_per_sample"] for row in combined) / len(combined),
                             "peak_allocated_gib": max(read_json(directory / f"runtime.rank{worker}.json")["peak_allocated_gib"]
                                                       for worker in range(world))})

@@ -215,7 +215,7 @@ def build_model(config, **kwargs):
 
 
 def load_checkpoint_model(checkpoint: str | Path, *, model_path: str | None = None,
-                          attention: str | None = None) -> tuple[CompressionModel, dict]:
+                          attention: str | None = None, dtype: str | None = None) -> tuple[CompressionModel, dict]:
     checkpoint = Path(checkpoint)
     metadata = read_json(checkpoint / "experiment.json")
     if metadata.get("format") != "seco-adapters-v1":
@@ -226,6 +226,8 @@ def load_checkpoint_model(checkpoint: str | Path, *, model_path: str | None = No
         config["name_or_path"] = model_source(model_path)
     if attention:
         config["attn_implementation"] = attention
+    if dtype:
+        config["dtype"] = dtype
     if (checkpoint / "artifact.json").is_file():
         if read_json(checkpoint / "artifact.json")["format"] != "seco-merged-v1":
             raise ValueError("Unsupported merged model format")

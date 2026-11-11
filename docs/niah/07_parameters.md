@@ -72,12 +72,12 @@ NIAH Shell 位于 scripts/niah/sh，Python 位于 scripts/niah/py。标量和评
 | 同上 | PREPARED_DIR | NIAH_ROOT/prepared/train_v1；仅训练集模式使用 |
 | 同上 | OUTPUT_DIR | 自动唯一 NIAH benchmark 目录 |
 | 同上 | RATIOS | 4 8 16 32；环境变量用空格分隔，如 `RATIOS='16 32'` |
-| 同上 | MAX_TEST_SAMPLES | 空为全量；正整数限制各压缩比的样本数 |
+| 同上 | MAX_TEST_SAMPLES / SHUFFLE | 0 或空为全量；正整数限制各压缩比的样本数。SHUFFLE=1 用种子随机选样 |
 | 同上 | BATCH_SIZE / WORKERS | 1 / 2 |
 | 同上 | WARMUP_BATCHES | 1；不漏评真实样本 |
 | 同上 | MAX_NEW_TOKENS / REPETITION_PENALTY | 64 / 1.0；解码预算和重复惩罚 |
 | 同上 | PLAN_ONLY | 0；1 检查所选数据与元数据，无模型分配 |
-| 51_benchmark_train.sh | EVAL_TRAIN 及 50 的共用变量 | 必须显式设 `EVAL_TRAIN=1`；详见 [09](09_train_benchmark.md) |
+| 51_benchmark_train.sh | 50 的共用变量 | 此入口设置 `EVAL_TRAIN=1`，调用同方法的 `50_benchmark.sh`；详见 [09](09_train_benchmark.md) |
 | 60_score.sh | PREDICTIONS | 必改为真实 predictions.jsonl |
 | 70_plot_heatmap.sh | BENCHMARK_DIR | 必改为真实 benchmark 根目录 |
 | 同上 | INPUTS | BENCHMARK_DIR/ratio_*/metrics.json，加引号的数组 |

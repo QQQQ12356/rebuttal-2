@@ -14,7 +14,23 @@ PREDICTIONS="$OUTPUT_DIR/ratio_4/predictions.jsonl" bash "scripts/$task/sh/$meth
 BENCHMARK_DIR="$OUTPUT_DIR" bash "scripts/$task/sh/$method/70_plot_heatmap.sh"  # NIAH 或 RULER QA
 ```
 
-Benchmark 用 `70_export_excel.sh`。NIAH/RULER QA 可先设置 `PLAN_ONLY=1` 检查数据身份和样本量，用 `MAX_TEST_SAMPLES` 做小规模生成验证。训练集评测使用 NIAH 的 `51_benchmark_train.sh` 或 RULER QA 的 `EVAL_TRAIN=1`，并指定训练原始 `PREPARED_DIR`。两条任务还可用 [05 LLM-as-Judge](05_llm_judge.md) 对已有预测评分。
+Benchmark 用 `70_export_excel.sh`。三个任务都可以先设置 `PLAN_ONLY=1` 查看样本量。各方法的 `50_benchmark.sh` 顶部可直接修改推理设置。训练集评测统一用 `EVAL_TRAIN=1`，并将 `PREPARED_DIR` 指向检查点对应的训练预处理目录。NIAH 的 `51_benchmark_train.sh` 会开启同一选项，使用该方法 `50_benchmark.sh` 中的设置。NIAH 与 RULER QA 还可用 [05 LLM-as-Judge](05_llm_judge.md) 对已有预测评分。
+
+```bash
+# 训练集诊断。四种方法和三个任务使用相同的参数名。
+EVAL_TRAIN=1 MAX_TEST_SAMPLES=100 SHUFFLE=1 SEED=42 RATIOS='16 32' \
+    CHECKPOINT=/path/to/run/final PREPARED_DIR=/path/to/prepared_train \
+    bash scripts/niah/sh/comi/50_benchmark.sh
+```
+
+| 变量 | 作用 |
+| --- | --- |
+| `EVAL_TRAIN` | 默认 0 使用独立测试集，1 使用检查点的训练数据。训练集成绩用于诊断 |
+| `MAX_TEST_SAMPLES` | 每个压缩比的全局样本上限。默认 0 使用全部。所有压缩比复用同一份选样 |
+| `DATASETS` / `SAMPLES` | Benchmark 专用。前者指定数据集，后者限制每个数据集的样本数。全局上限在各数据集取样后应用 |
+| `SHUFFLE` / `SEED` | 设 `SHUFFLE=1` 用种子控制随机选样。NIAH 与 RULER QA 网格子集按单元轮流取样 |
+| `MODEL_PATH` / `ATTENTION` / `DTYPE` / `NO_MERGE` | 指定重定位后的基座、覆盖 attention 后端、选择推理精度、保留活跃 LoRA 分支。精度默认沿用 checkpoint，可选 bfloat16、float16、float32 |
+| `TEMPERATURE` / `TOP_P` / `TOP_K` / `NUM_BEAMS` | sample 或 beam 的专用参数。适用关系见 [解码配置](01_decoding.md) |
 
 | 产物／参数 | 含义 |
 | --- | --- |

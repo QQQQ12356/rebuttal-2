@@ -48,6 +48,9 @@ python -m torch.distributed.run --standalone --nproc_per_node 1 scripts/benchmar
 | --batch-size | 1 | 每卡 batch；支持变长与尾部不足 batch |
 | --samples | 0 | 每个已预处理测试集再取前 N；0 使用全部 prepared 样本 |
 | --shuffle / --seed | 关闭 / 42 | 可选固定种子重排后再取 N |
+| --eval-train | 关闭 | 从检查点对应的 prepared 训练集取样，需匹配训练清单 |
+| --max-test-samples | 0 | 每个比例的全局样本上限，在每数据集上限之后应用 |
+| --plan-only | 关闭 | 检查样本选择与预算并打印计划 |
 | --workers | 2 | 每卡 DataLoader worker 数 |
 | --warmup-batches | 1 | 每数据集/比例重复首 batch 的预热次数；0 关闭 |
 | --qa-max-new-tokens | 64 | 三个 QA 测试源生成上限 |

@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 import json
 import math
 import os
+import random
 import time
 
 from ruler_bootstrap import require_linux
@@ -33,13 +34,16 @@ def main():
     parser.add_argument("--max-new-tokens", type=int, default=32, help="Generation cap within the prepared budget (default: 32)")
     add_generation_arguments(parser)
     parser.add_argument("--attention", choices=("eager", "sdpa", "flash_attention_2"))
+    parser.add_argument("--dtype", choices=("bfloat16", "float16", "float32"), help="Default: checkpoint dtype")
     parser.add_argument("--no-merge", action="store_true")
     parser.add_argument("--plan-only", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--shuffle", action="store_true", help="Shuffle candidates using --seed before sample selection")
     args = parser.parse_args()
     generation = generation_options(parser, args, args.max_new_tokens)
-    if args.max_test_samples is not None and args.max_test_samples < 1:
-        parser.error("--max-test-samples must be positive")
+    if args.max_test_samples is not None and args.max_test_samples < 0:
+        parser.error("--max-test-samples must be nonnegative; 0 means all")
+    args.max_test_samples = args.max_test_samples or None
     if len(set(args.ratios)) != len(args.ratios) or any(not math.isfinite(r) or r < 1 for r in args.ratios):
         parser.error("Ratios must be distinct finite numbers >= 1")
     if args.batch_size < 1 or min(args.workers, args.warmup_batches) < 0:
@@ -85,6 +89,8 @@ def main():
         if any(row["question_key"] in training_keys for row in rows):
             raise ValueError("Test questions overlap the checkpoint's RULER QA training set")
     prepared_count = len(rows)
+    if args.shuffle:
+        random.Random(args.seed).shuffle(rows)
     rows = limit_grid_rows(rows, args.max_test_samples, cell_keys=("task", "target_length"))
     if len(rows) < prepared_count:
         counts, ids = defaultdict(Counter), defaultdict(list)
@@ -125,7 +131,7 @@ def main():
     set_seed(args.seed + rank)
     if world > 1:
         dist.init_process_group("nccl")
-    model, _ = load_checkpoint_model(checkpoint, model_path=args.model, attention=args.attention)
+    model, _ = load_checkpoint_model(checkpoint, model_path=args.model, attention=args.attention, dtype=args.dtype)
     if tokenizer_fingerprint(model.tokenizer) != manifest["tokenizer_fingerprint"]:
         raise ValueError("Loaded model tokenizer differs from the prepared data tokenizer")
     if max(settings["max_input_tokens"], settings["max_decoder_tokens"]) > model.config.max_position_embeddings:

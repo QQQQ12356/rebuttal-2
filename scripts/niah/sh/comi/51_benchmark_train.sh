@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-export COMPRESSION_METHOD=comi
-export BACKBONE="${BACKBONE:-Llama-3.2-1B-Instruct}"
-ENTRY_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-source "$ENTRY_DIR/_common.sh"
-
-# Edit defaults here or supply environment overrides.
-export EVAL_TRAIN="${EVAL_TRAIN:-1}"
-exec bash "$ENTRY_DIR/51_benchmark_train.sh" "$@"
+# Shared settings are in this method's 50_benchmark.sh.
+export EVAL_TRAIN=1
+exec bash "$(dirname -- "${BASH_SOURCE[0]}")/50_benchmark.sh" "$@"
