@@ -8,6 +8,7 @@ import random
 
 from seco.data import answer_list, length_reason, reservoir_add
 from seco.io import fingerprint
+from seco.niah.data import PROMPT as NIAH_PROMPT
 
 
 TASKS = {
@@ -15,7 +16,6 @@ TASKS = {
     "qa_2": {"train": "hotpot_train_v1.1.json", "test": "hotpot_dev_distractor_v1.json"},
 }
 PROMPT_STYLES = ("raw", "legacy")
-LEGACY_INTRO = "Use the documents below to answer the question. Give only the answer."
 
 
 @dataclass(frozen=True)
@@ -90,14 +90,13 @@ def build_rows(questions, tokenizer, settings, *, task, split):
     rng.shuffle(questions)
     encode = lru_cache(maxsize=8192)(lambda text: tokenizer.encode(text, add_special_tokens=False))
     legacy_prompt = settings.get("prompt_style", "raw") == "legacy"
-    intro = encode(LEGACY_INTRO) if legacy_prompt else []
     lengths = settings[f"{split}_lengths"]
     limit = settings[f"{split}_samples_per_task"]
     rows, rejected, accepted_keys = [], Counter(), set()
 
     def build(question, target):
         test = split == "test"
-        prompt_text = f"\n\nQuestion: {question.text}\nAnswer:" if legacy_prompt else f"\n{question.text}"
+        prompt_text = NIAH_PROMPT.format(question=question.text) if legacy_prompt else f"\n{question.text}"
         prompt = encode(prompt_text)
         labels = encode(question.answers[0]) + [tokenizer.eos_token_id] if not test else []
         reserve = settings["generation_budget"] if test else len(labels)
@@ -109,7 +108,7 @@ def build_rows(questions, tokenizer, settings, *, task, split):
         context_budget = min(input_budget - len(prompt), math.floor(decoder_room * settings["min_ratio"]))
         required = list(dict.fromkeys(question.required))
         documents = [encode("\n\nDocument:\n" + doc) for doc in required]
-        size = len(intro) + sum(map(len, documents))
+        size = sum(map(len, documents))
         if size > context_budget:
             return None, "long_required_context"
         if not test and len(labels) > settings["max_answer_tokens"]:
@@ -136,7 +135,7 @@ def build_rows(questions, tokenizer, settings, *, task, split):
         if size + len(prompt) + reserve < minimum:
             return None, "low_fill"
         sample_rng.shuffle(documents)
-        context = intro + list(chain.from_iterable(documents))
+        context = list(chain.from_iterable(documents))
         row = {"id": f"{task}:{split}:{question.source_id}:{target}", "task": task,
                "source_id": question.source_id, "question_key": question.key, "question": question.text,
                "answer": question.answers, "target_length": target, "context_tokens": len(context),

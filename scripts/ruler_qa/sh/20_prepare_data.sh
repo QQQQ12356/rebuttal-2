@@ -8,7 +8,7 @@ RAW_DIR="${RAW_DIR:-$RULER_QA_ROOT/raw}"
 PREPARED_DIR="${PREPARED_DIR:-$RULER_QA_ROOT/prepared/${SPLIT}_v1}"
 MODEL_PATH="${MODEL_PATH:-$DEFAULT_MODEL_PATH}"
 REVISION="${REVISION:-main}"
-PROMPT_STYLE="${PROMPT_STYLE:-raw}"  # raw: question only; legacy: instruction plus Question:/Answer:.
+PROMPT_STYLE="${PROMPT_STYLE:-raw}"  # raw: question only; legacy: NIAH Question: suffix.
 
 # Leave an override empty to use PREPARE_CONFIG. Comments show the shipped defaults.
 TRAIN_LENGTHS="${TRAIN_LENGTHS:-}"                         # 4096 8192. Space-separated token budgets.

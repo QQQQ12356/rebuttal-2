@@ -22,7 +22,7 @@ def main():
     parser.add_argument("--model", default=default_model_path())
     parser.add_argument("--revision", default="main")
     parser.add_argument("--prompt-style", choices=PROMPT_STYLES, default="raw",
-                        help="raw: append the question only; legacy: add the instruction and QA markers")
+                        help="raw: append the question only; legacy: use the NIAH Question: suffix")
     overrides = parser.add_argument_group("optional overrides for --config")
     overrides.add_argument("--train-lengths", type=int, nargs="+", help="Training token budgets")
     overrides.add_argument("--test-lengths", type=int, nargs="+", help="Test token budgets")

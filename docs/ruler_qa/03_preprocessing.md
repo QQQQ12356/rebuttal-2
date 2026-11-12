@@ -49,12 +49,12 @@ Who first introduced social insurance programs?
 
 | Bash 变量 | Python 参数 | 取值与修改方式 |
 | --- | --- | --- |
-| `PROMPT_STYLE` | `--prompt-style` | 默认 `raw`，使用上述后缀。设为 `legacy` 可复现此前 RULER QA 的英文指令和 `\n\nQuestion: {question}\nAnswer:` 后缀。 |
+| `PROMPT_STYLE` | `--prompt-style` | 默认 `raw`，使用上述后缀。设为 `legacy` 时使用与 NIAH 一致的 `\n\nQuestion: {question}` 后缀。 |
 | `SPLIT` | `--split` | `train` 或 `test`。每次生成一个数据划分。 |
 | `PREPARED_DIR` | `--output` | 指定一个尚不存在的目录，避免覆盖旧数据。 |
 | `PREPARE_CONFIG` | `--config` | 指定长度档位、样本数和 token 预算等配置。 |
 
-长期修改可编辑 `scripts/ruler_qa/sh/seco/20_prepare_data.sh` 顶部的 `PROMPT_STYLE` 默认值。单次运行可在命令前设置同名环境变量，或在脚本名后追加 `--prompt-style raw`。同时指定时以末尾的 CLI 参数为准。实际格式写入 `manifest.json` 的 `arguments.prompt_style`。
+长期修改可编辑共享脚本 `scripts/ruler_qa/sh/20_prepare_data.sh` 顶部的 `PROMPT_STYLE` 默认值。单次运行可在命令前设置同名环境变量，或在脚本名后追加 `--prompt-style legacy`。同时指定时以末尾的 CLI 参数为准。所选格式写入 `manifest.json` 的 `arguments.prompt_style`。
 
 ```bash
 SPLIT=train PROMPT_STYLE=raw PREPARED_DIR=artifacts/seco/Llama-3.2-1B-Instruct/ruler_qa/prepared/train_raw \
@@ -64,6 +64,8 @@ SPLIT=test PROMPT_STYLE=raw PREPARED_DIR=artifacts/seco/Llama-3.2-1B-Instruct/ru
 ```
 
 旧 JSONL 已存储 token IDs，修改格式参数后须重新预处理。训练时将 `PREPARED_DIR` 指向 `train_raw`，测试时将 `TEST_DIR` 指向 `test_raw`。若要评估新格式下训练和测试的完整流程，使用新训练数据训练，再用对应的新测试数据评测。与旧格式做对照时核对样本 ID，因为模板长度变化可能改变能装入预算的文档和入选问题。
+
+旧版产物也可能记录 `arguments.prompt_style: legacy`。要使用新的 NIAH 后缀，请通过 `PROMPT_STYLE=legacy` 将所需划分重新生成到新目录。
 
 ## 样本与预算
 
