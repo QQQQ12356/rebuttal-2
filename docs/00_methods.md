@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | SeCo | 上下文整体编码，选语义中心并进行聚类加权，随后拼接 prompt | Encoder 和 decoder 各自训练 LoRA，原有压缩函数沿用 |
 | COMI | 每段拼接 query 后编码。粗粒度依据相关性减冗余分配组宽，细粒度依据同类分数做组内加权聚合，随后经 LSA 融合 | 默认 8 层 encoder、1 层 LSA。Encoder、decoder、LSA 训练 LoRA。组宽取整时每组至少一个 token，以固定槽数对齐实验 |
-| ICAE | 每个 chunk 追加可学习记忆 token，取对应隐藏向量。默认尾块使用完整槽数 | 先做 AE 重建和 LM 续写预训练，再载入权重做任务微调。Encoder 使用 Q/V LoRA，decoder 冻结 |
+| ICAE | 每个 chunk 追加可学习记忆 token，取对应隐藏向量。默认尾块使用完整槽数 | 可做 AE 重建和 LM 续写预训练再微调，也可从原始基座直接微调。Encoder 使用 Q/V LoRA，decoder 冻结 |
 | RAM | Query 与短段分别编码。高相关段保留原始 token，其余段按 query 相关性池化，经融合及线性对齐后恢复段序 | 默认保留 5% 的段、8 层 encoder、1 层融合。训练 LoRA、线性对齐及基于答案 token 匹配的对比损失 |
 
 COMI 和 RAM 采用本项目的 LoRA 配方。RAM 的对比损失使用训练标签中主答案的精确 token 匹配，命中跨段时会标记涉及的所有段。对比论文或上游指标时应记录训练配方、模型版本、保留比例与压缩预算。[COMI 参考实现](https://github.com/Twilightaaa/COMI/tree/d175a44eaf71084cb1ba2edc91e3f18944e971ad) · [RAM 参考实现](https://github.com/Twilightaaa/RAM/tree/1e82e3bf207222e2d5c9165335bbb1f4e471ca20) · [ICAE 两阶段实验](icae/00_README.md)。

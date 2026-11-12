@@ -2,7 +2,7 @@
 
 以下命令以 COMI 的 NIAH 单卡验证为例。切换任务时把 `task` 改为 `benchmark` 或 `ruler_qa`，切换方法时改 `method`。准备好该任务的训练数据后执行。
 
-ICAE 需先完成无标注文档预训练，新建微调 run 时用 `INIT_FROM` 指向预训练适配器。[ICAE 两阶段实验](icae/00_README.md)。
+ICAE 新建微调 run 时可用 `INIT_FROM` 载入预训练适配器，也可用 `INIT_FROM_BASE=1` 从原始基座开始。[ICAE 训练指南](icae/00_README.md)。
 
 ```bash
 method=comi

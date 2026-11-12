@@ -18,8 +18,11 @@ def main(default_config="configs/benchmark/train.json", expected_task="qa"):
     parser.add_argument("--backend", choices=("ddp", "zero2", "zero2_cpu", "zero3_cpu"), default="zero2")
     parser.add_argument("--model", help="Override base path, typically a downloaded local model")
     parser.add_argument("--prepared-dir")
-    parser.add_argument("--resume", help="Native checkpoint-N directory inside this run")
-    parser.add_argument("--init-from", help="Initialize a new ICAE SFT run from pretraining adapters")
+    start = parser.add_mutually_exclusive_group()
+    start.add_argument("--resume", help="Native checkpoint-N directory inside this run")
+    start.add_argument("--init-from", help="Initialize a new ICAE SFT run from pretraining adapters")
+    start.add_argument("--init-from-base", action="store_true",
+                       help="Initialize fresh ICAE parameters for SFT using the configured base model")
     parser.add_argument("--max-steps", type=int, help="Override cumulative optimizer-step target")
     parser.add_argument("--plan-only", action="store_true", help="Validate files/settings; no model or CUDA allocation")
     args = parser.parse_args()
@@ -31,10 +34,12 @@ def main(default_config="configs/benchmark/train.json", expected_task="qa"):
         from icae.stages import validate_stage
 
         validate_stage(model_config, expected_task)
-    if args.init_from and (method != "icae" or pretraining or args.resume):
-        parser.error("--init-from is for a new ICAE SFT run; it cannot be combined with --resume")
-    if config["data"].get("require_pretrained") and not (args.init_from or args.resume):
-        parser.error("This ICAE SFT config requires --init-from (or --resume for an existing run)")
+    icae_sft = method == "icae" and not pretraining
+    if (args.init_from or args.init_from_base) and not icae_sft:
+        parser.error("--init-from and --init-from-base are only for a new ICAE SFT run")
+    require_pretrained = config["data"].get("require_pretrained")
+    if require_pretrained and not (args.init_from or args.init_from_base or args.resume):
+        parser.error("Choose --init-from CHECKPOINT, --init-from-base, or --resume CHECKPOINT")
     if args.backend == "zero3_cpu" and method != "seco":
         raise ValueError("Use ddp, zero2 or zero2_cpu for methods with variable per-sample encoder calls")
     if args.model:
@@ -74,13 +79,15 @@ def main(default_config="configs/benchmark/train.json", expected_task="qa"):
     effective_batch = world_size * config["training"]["per_device_train_batch_size"] * config["training"]["gradient_accumulation_steps"]
     resume = project_path(args.resume) if args.resume else None
     initialization = None
+    initialization_mode = "pretrained" if args.init_from else "base"
     if resume:
         if resume.parent != output or not (resume / "trainer_state.json").is_file():
             raise ValueError("--resume must name a native checkpoint-N inside --output")
         old = read_json(resume / "experiment.json")
         initialization = old.get("initialization")
-        if config["data"].get("require_pretrained") and not initialization:
-            raise ValueError("This SFT checkpoint has no ICAE pretraining provenance")
+        if require_pretrained and not initialization and old.get("initialization_mode") != "base":
+            raise ValueError("This SFT checkpoint has no recorded ICAE initialization source")
+        initialization_mode = "pretrained" if initialization else "base"
         if config["model"]["revision"] == "main":
             config["model"]["revision"] = old["config"]["model"]["revision"]
         old_config, current_config = copy.deepcopy(old["config"]), copy.deepcopy(config)
@@ -102,6 +109,8 @@ def main(default_config="configs/benchmark/train.json", expected_task="qa"):
             "effective_batch": effective_batch, "resume": str(resume) if resume else None,
             "data_manifest_sha256": sha256_file(prepared / "manifest.json"),
             "token_limits": {"encoder": encoder_limit, "decoder": decoder_limit}}
+    if icae_sft:
+        plan["initialization_mode"] = initialization_mode
     if initialization:
         plan["initialization"] = initialization
     if args.plan_only:

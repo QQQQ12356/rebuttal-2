@@ -12,7 +12,7 @@ CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2 BACKEND=ddp \
     bash scripts/icae/sh/30_pretrain.sh
 ```
 
-`PLAN_ONLY=1` 验证配置、数据清单及文件哈希，输出有效 batch 和输出路径。模型实际位置上限在训练初始化时校验。单步检查会产生独立 run。正式运行日志打印其路径，完成后使用该 run 的 `final/` 初始化微调。
+`PLAN_ONLY=1` 验证配置、数据清单及文件哈希，输出有效 batch 和 token 长度预算。模型实际位置上限在训练初始化时校验。单步检查会产生独立 run。正式运行日志打印其路径，完成后将该 run 的 `final/` 传给微调的 `INIT_FROM`。
 
 每步从前半段编码一次记忆。Decoder 通过 AE 标记预测重建目标，通过 LM 标记预测续写目标。目标均以 teacher forcing 计算 token 交叉熵，批内 padding 不计入损失。联合损失为 `(ae_weight × AE + lm_weight × LM) / (ae_weight + lm_weight)`。默认权重各为 1。把某项设为 0 可关闭该项。使用默认两项预训练时，交接给微调的 LM 标记已经过续写监督。
 

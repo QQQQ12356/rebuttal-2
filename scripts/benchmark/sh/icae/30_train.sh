@@ -14,7 +14,15 @@ export MODEL_PATH="${MODEL_PATH:-$DEFAULT_MODEL_PATH}"
 export PREPARED_DIR="${PREPARED_DIR:-$BENCHMARK_ROOT/prepared/default}"
 export MAX_STEPS="${MAX_STEPS:-}"                             # Empty uses JSON; positive value is cumulative target.
 export PLAN_ONLY="${PLAN_ONLY:-0}"                            # 1 validates data/config and prints the plan.
-INIT_FROM="${INIT_FROM:-}"                                # ICAE pretraining final or checkpoint-N.
+# Choose one source for a new SFT run. To resume, leave both at their defaults.
+INIT_FROM="${INIT_FROM:-}"             # Pretraining final/ or checkpoint-N/.
+INIT_FROM_BASE="${INIT_FROM_BASE:-0}"  # 1 starts from MODEL_PATH with fresh ICAE parameters.
+
 options=()
 [[ -n "$INIT_FROM" ]] && options+=(--init-from "$INIT_FROM")
+case "$INIT_FROM_BASE" in
+    0) ;;
+    1) options+=(--init-from-base) ;;
+    *) echo 'INIT_FROM_BASE must be 0 or 1.' >&2; exit 2 ;;
+esac
 exec bash "$ENTRY_DIR/30_train.sh" "${options[@]}" "$@"

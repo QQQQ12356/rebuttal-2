@@ -17,5 +17,4 @@ SeCo、COMI、ICAE 和 RAM 共用 Benchmark、NIAH 与 RULER QA 的数据、训�
 | Benchmark | [五数据集训练、四数据集评测与 Excel 导出](docs/benchmark/00_README.md) |
 | NIAH | [检索训练、长度×深度网格与热力图](docs/niah/00_README.md) |
 | RULER QA | [SQuAD 与 HotpotQA 长上下文训练、评测和热力图](docs/ruler_qa/00_README.md) |
-| ICAE | [预训练、任务微调和专用参数](docs/icae/00_README.md) |
-| ICAE | [预训练、任务微调和专用参数](docs/icae/00_README.md) |
+| ICAE | [预训练、两种微调方式和专用参数](docs/icae/00_README.md) |
