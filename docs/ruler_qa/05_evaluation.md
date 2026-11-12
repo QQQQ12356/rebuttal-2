@@ -46,3 +46,11 @@ CUDA_VISIBLE_DEVICES=0,1 NPROC_PER_NODE=2   CHECKPOINT="$RUN_DIR/final_merged"  
 PREDICTIONS="$OUTPUT_DIR/ratio_4/predictions.jsonl" bash scripts/ruler_qa/sh/seco/60_score.sh
 BENCHMARK_DIR="$OUTPUT_DIR" METRIC=f1 FIGURE_PATH="$OUTPUT_DIR/ruler_qa_f1.png"   bash scripts/ruler_qa/sh/seco/70_plot_heatmap.sh
 ```
+
+## 导出 Excel
+
+```bash
+BENCHMARK_DIR="$OUTPUT_DIR" bash scripts/ruler_qa/sh/seco/80_export.sh
+```
+
+四种方法的脚本分别在 `scripts/ruler_qa/sh/{seco,comi,icae,ram}/` 下。默认在运行目录写入 `metrics.xlsx`，重复导出会刷新该文件。用 `EXCEL_PATH` 可以指定其他输出路径。每个已有的 `ratio_*/metrics.json` 对应一张按压缩比排序的表，例如 `seco-ruler_qa-ratio-4`。表中包含总体分数、样本数、已有的耗时和显存，以及任务和长度明细。分数在 Excel 中显示为百分比，单元格的数值仍为 0–1。缺少 `openpyxl` 时执行 `python -m pip install -r requirements-tools.txt`。

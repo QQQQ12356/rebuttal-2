@@ -117,3 +117,12 @@ python scripts/niah/py/seco/70_plot_heatmap.py \
 横轴为精确序列 token 长度，纵轴0%在顶部、100%在底部。格子用离散等宽列，与参考图一致；不是按长度差距绘制连续面积。多个面板须使用相同任务、背景、seed、axes、repeats 与实际 grid 身份，防止拼接不同样本成绩。
 
 输出 `NIAH.png` 可直接展示，`NIAH.pdf` 为可缩放图，`NIAH.csv` 包含各比例、长度、深度、数量和全部分数，支持进一步统计。PNG/PDF/CSV 任一已存在时拒绝覆盖，换 FIGURE_PATH。当前尚无目标 Linux 上的真实成绩，所以仓库不附带虚构的最终热力图。
+
+## 导出 Excel
+
+```bash
+BENCHMARK_DIR="artifacts/comi/Llama-3.2-1B-Instruct/niah/benchmarks/niah_train_20261111T155054Z_29114" \
+    bash scripts/niah/sh/comi/80_export.sh
+```
+
+导出适用于训练集和留出测试，支持 `seco`、`comi`、`icae`、`ram` 四个方法目录。默认在运行目录写入 `metrics.xlsx`，重复导出会刷新该文件。用 `EXCEL_PATH` 可以指定其他输出路径。每个已有的 `ratio_*/metrics.json` 对应一张按压缩比排序的表，例如 `comi-niah-ratio-4`。表中保留整体指标、样本数、已有的耗时和显存，以及源文件中的训练分组或留出网格。分数在 Excel 中显示为百分比，单元格的数值仍为 0–1。导出使用 `requirements-tools.txt` 中的 `openpyxl`。
