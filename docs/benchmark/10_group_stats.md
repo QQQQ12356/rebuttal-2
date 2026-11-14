@@ -38,3 +38,24 @@ BENCHMARK_DIR=artifacts/my_seco_run \
 NIAH 或 RULER QA 使用各自的 `scripts/niah/sh/seco/50_benchmark.sh` 或 `scripts/ruler_qa/sh/seco/50_benchmark.sh`，运行完成后使用同一个导出脚本。NIAH 的 `51_benchmark_train.sh` 也沿用这个开关。
 
 导出仅需 Python 标准库，结果为 UTF-8 JSONL，每行包含一个样本在一个压缩比下的身份字段和分组统计。旧结果或关闭记录的结果需开启统计后重新评测，再执行导出。重复导出时可通过 `GROUP_STATS_OUTPUT` 指定新文件。
+
+## 通用 Benchmark 的组大小与 F1 分析
+
+分析脚本直接读取通用 Benchmark 评测目录下的合并预测文件。输入支持 NQ（`naturalqa`）、HotpotQA（`hotpotqa`）、2WikiMQA（`2wikimqa`）、NarrativeQA（`narrativeqa`）和 MultiNews（`multinews`）。当前默认测试数据注册表包含其中四项。要纳入 NarrativeQA，需使用包含 `narrativeqa` 的已预处理测试数据和评测结果。脚本会提示当前 run 缺少的数据集。
+
+```bash
+BENCHMARK_DIR=artifacts/my_seco_run \
+  bash scripts/benchmark/sh/56_analyze_group_f1.sh
+```
+
+| Shell 变量 | Python 参数 | 默认值与用途 |
+| --- | --- | --- |
+| `BENCHMARK_DIR` | `--benchmark-dir` | 必填，指向包含 `benchmark.json` 和 `ratio_*/predictions.jsonl` 的通用 Benchmark 目录 |
+| `GROUP_F1_OUTPUT_DIR` | `--output-dir` | 默认在 run 下新建 `group_f1_analysis/`，重复分析时指定新目录 |
+| `BOOTSTRAP_RESAMPLES` | `--bootstrap-resamples` | 每个数据集、压缩比及指标使用 1000 次样本重抽，设为 `0` 可跳过区间估计 |
+| `BOOTSTRAP_SEED` | `--seed` | 默认 `42`，控制 bootstrap 随机种子 |
+| `PYTHON_BIN` | — | 默认 `python`，使用 Linux Python 3.10+ 标准库 |
+
+- `samples.csv` 每行对应一个样本和压缩比，保存原始 F1、组数、参与分组的 token 总数、组大小 CV（总体标准差除以均值）和最大组大小相对均值。组数小于 2 的样本保留在表中，两个不均衡指标留空。
+- `correlations.csv` 按数据集、压缩比和指标输出 Spearman 相关系数 `spearman_rho`，以及控制上下文 token 数秩后的偏相关 `length_adjusted_rho)。并列值使用平均秩。负相关表示较不均衡的样本倾向于获得较低 F1。F1 沿用评测的 0–1 尺度，MultiNews 的 F1 表示 token 重合。
+- `adjusted_ci95_low/high` 是偏相关的分层样本 bootstrap 百分位区间，假设同一层内样本相互独立。常量、样本量不足、完全共线或有效重抽不足时，相应结果留空。区间用于描述关联的不确定性。因果结论需结合固定压缩预算的配对消融。
