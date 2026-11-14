@@ -1,11 +1,11 @@
-"""Original SeCo compression, copied verbatim; see docs/benchmark/07_architecture.md."""
+"""SeCo compression with optional per-sample group sizes."""
 import math
 import torch
 import torch.nn.functional as F
 
 
 class CompressionMixin:
-    def _compress_one(self, hidden_states, prompt_mask, attention_mask):
+    def _compress_one(self, hidden_states, prompt_mask, attention_mask, *, group_sizes=None):
         valid_mask = attention_mask.bool()
         prompt_mask = prompt_mask.bool() & valid_mask
         input_mask = (~prompt_mask) & valid_mask
@@ -31,16 +31,10 @@ class CompressionMixin:
         non_center_tokens = input_tokens[non_center_mask]
 
         if non_center_tokens.size(0) > 0:
-            # sim_to_centers = self.cos(non_center_tokens.unsqueeze(1), cluster_centers.unsqueeze(0))
-            # sim_prompt_non = sim_to_prompt[non_center_mask].unsqueeze(1)
-            # scores = sim_to_centers * sim_prompt_non
-            # best_cluster = scores.argmax(dim=1)
             sim_to_centers = self.cos(non_center_tokens.unsqueeze(1), cluster_centers.unsqueeze(0))
             best_cluster = sim_to_centers.argmax(dim=1)
             sim_prompt_non = sim_to_prompt[non_center_mask].unsqueeze(1)
             scores = sim_to_centers * sim_prompt_non
-            # pprint(best_cluster)
-            # pprint(scores.shape)
             clustered = []
             for k in range(K):
                 members = [cluster_centers[k:k+1]]
@@ -52,25 +46,33 @@ class CompressionMixin:
                     weights.append(scores[idx, k])
 
                 vecs = torch.cat(members, dim=0)
+                if group_sizes is not None:
+                    group_sizes.append(vecs.size(0))
                 weight = F.softmax(torch.cat(weights), dim=0).unsqueeze(-1)
                 clustered.append((vecs * weight).sum(dim=0, keepdim=True))
             compressed_input = torch.cat(clustered, dim=0)
         else:
             compressed_input = cluster_centers
+            if group_sizes is not None:
+                group_sizes.extend([1] * K)
 
         combined = torch.cat([compressed_input, prompt_tokens], dim=0)
         return combined, torch.ones(combined.size(0), device=hidden_states.device, dtype=torch.bool)
 
-    def _compress_batch(self, hidden_states, prompt_mask, attention_mask):
+    def _compress_batch(self, hidden_states, prompt_mask, attention_mask, *, group_stats=None):
         batch_compressed = []
         batch_masks = []
 
         for b in range(hidden_states.size(0)):
+            group_sizes = [] if group_stats is not None else None
             _compressed, mask = self._compress_one(
                 hidden_states[b],
                 prompt_mask[b],
-                attention_mask[b]
+                attention_mask[b],
+                group_sizes=group_sizes,
             )
+            if group_stats is not None:
+                group_stats.append({"group_count": len(group_sizes), "group_token_counts": group_sizes})
             batch_compressed.append(_compressed)
             batch_masks.append(mask)
 

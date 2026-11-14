@@ -8,7 +8,7 @@
 37e7ed3ed8746b61bcaffcb3a81994ec45d70872aae08bf1e0b0408374a61d6f
 ```
 
-原文件现保存在 `legacy/py/modeling_seco_cluster.py`。其中 `_compress_one` 与 `_compress_batch` 原样提取到 `seco/compression.py`，没有改中心策略或聚合公式。静态检查比较这两个方法的 AST，忽略换行格式但不忽略运算与控制流；`tests/reference_compression.py` 另存冻结基线用于 Linux 数值/梯度验证。
+原文件保存在 `legacy/py/modeling_seco_cluster.py`。`seco/compression.py` 沿用其中的中心选择、组分配和加权聚合逻辑，并支持可选的分组统计。静态检查去除统计代码后比较两个压缩方法的 AST。`tests/reference_compression.py` 保存冻结基线，供 Linux 数值与梯度验证。
 
 原始压缩过程：
 
@@ -42,7 +42,7 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| seco/compression.py | 原始两段语义压缩方法，固定核对点 |
+| seco/compression.py | 两段语义压缩和可选的逐样本分组计数 |
 | seco/similarity.py | 等公式的余弦计算内存控制 |
 | seco/model.py | 双模型、LoRA、前缀 padding、训练 forward、生成、权重加载/合并 |
 | seco/data.py | 各源适配、分词边界、采样/长度规则、collator |

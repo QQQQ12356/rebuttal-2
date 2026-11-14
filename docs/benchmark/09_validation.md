@@ -9,7 +9,7 @@
 | 检查 | 结果/范围 |
 | --- | --- |
 | Python AST 解析 | 新 seco、scripts/benchmark/py、tests 目录全部 Python 文件可解析 |
-| 原始方法对照 | 两个压缩方法与 legacy 原文件 AST 相同 |
+| 原始方法对照 | 去除可选的分组统计代码后，两个压缩方法与 legacy 原文件 AST 相同 |
 | JSON 解析 | configs 下所有配置可解析 |
 | Shell 语法 | 使用 Git Bash 对新 scripts/benchmark/sh 全部 `.sh` 执行 bash -n 通过；没有执行脚本正文 |
 | LF 检查 | 新 Shell 文件未含 CRLF |

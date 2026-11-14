@@ -2,6 +2,8 @@
 
 贪心、采样、beam search 及脚本变量的完整说明见 [01 评测解码配置](../01_decoding.md)。
 
+SECO 默认在预测结果中记录实际组数及各组 token 数。开关、字段和导出方法见 [SECO 逐样本分组统计](10_group_stats.md)。
+
 ## 1. 合并并持久保存
 
 ```bash

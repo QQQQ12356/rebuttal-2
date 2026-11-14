@@ -77,6 +77,7 @@ NIAH Shell 位于 scripts/niah/sh，Python 位于 scripts/niah/py。标量和评
 | 同上 | WARMUP_BATCHES | 1；不漏评真实样本 |
 | 同上 | MAX_NEW_TOKENS / REPETITION_PENALTY | 64 / 1.0；解码预算和重复惩罚 |
 | 同上 | PLAN_ONLY | 0；1 检查所选数据与元数据，无模型分配 |
+| 同上 | RECORD_GROUP_STATS | SECO 默认 1；0 关闭。适用于测试网格与训练集评测，见 [分组统计与导出](../benchmark/10_group_stats.md) |
 | 51_benchmark_train.sh | 50 的共用变量 | 此入口设置 `EVAL_TRAIN=1`，调用同方法的 `50_benchmark.sh`；详见 [09](09_train_benchmark.md) |
 | 60_score.sh | PREDICTIONS | 必改为真实 predictions.jsonl |
 | 70_plot_heatmap.sh | BENCHMARK_DIR | 必改为真实 benchmark 根目录 |

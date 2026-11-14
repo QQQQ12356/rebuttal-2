@@ -9,6 +9,7 @@ from _bootstrap import require_linux
 from seco.experiment import artifact_path, check_method, memory_token_bound, validate_ratios
 from seco.data import BENCHMARKS, DATASETS, Collator, limit_grid_rows, tokenizer_fingerprint
 from seco.generation import add_generation_arguments, generation_options
+from seco.group_stats import add_group_stats_argument, resolve_group_stats
 from seco.io import iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.metrics import score_answer, summarize
 from seco.progress import BatchProgress, log_progress
@@ -39,6 +40,7 @@ def main():
     parser.add_argument("--no-merge", action="store_true", help="Keep LoRA modules active for equivalence comparisons")
     parser.add_argument("--include-context", action="store_true", help="Include source context in prediction JSONL/Excel details")
     parser.add_argument("--plan-only", action="store_true", help="Validate and print the sample selection without CUDA")
+    add_group_stats_argument(parser)
     args = parser.parse_args()
     if not args.ratios or any(not math.isfinite(r) or r < 1 for r in args.ratios):
         parser.error("Ratios must be finite and >= 1")
@@ -52,6 +54,7 @@ def main():
     experiment = read_json(source / "experiment.json")
     model_config = experiment["config"]["model"]
     check_method(model_config)
+    args.record_group_stats = resolve_group_stats(parser, args.record_group_stats, model_config)
     validate_ratios(model_config, args.ratios)
     split = "train" if args.eval_train else "test"
     available = tuple(name for name in (DATASETS if args.eval_train else BENCHMARKS)
@@ -163,20 +166,23 @@ def main():
                         model.generate_batch(batch, ratio=ratio, generation=generation)
                 torch.cuda.synchronize(device)
                 start = time.perf_counter()
-                token_ids = model.generate_batch(batch, ratio=ratio, generation=generation)
+                group_stats = [] if args.record_group_stats else None
+                token_ids = model.generate_batch(batch, ratio=ratio, generation=generation, group_stats=group_stats)
                 torch.cuda.synchronize(device)
                 seconds = time.perf_counter() - start
                 texts = model.tokenizer.batch_decode(token_ids, skip_special_tokens=True)
                 if len(texts) != batch["input_ids"].size(0):
                     raise RuntimeError("Generated batch size differs from input batch")
                 batch_rows = rows[offset:offset + len(texts)]
-                for row, prediction in zip(batch_rows, texts):
+                for sample_index, (row, prediction) in enumerate(zip(batch_rows, texts)):
                     em, f1 = score_answer(prediction, row["answer"])
                     result = {"id": row["id"], "dataset": name, "prompt": row["prompt"],
                               "memory_tokens_upper_bound": memory_token_bound(model.model_config, row["context_tokens"], ratio),
                               "answer": row["answer"], "prediction": prediction, "em": em, "f1": f1,
                               "ratio": ratio, "context_tokens": row["context_tokens"],
                               "seconds_per_sample": seconds / len(texts)}
+                    if group_stats is not None:
+                        result.update(group_stats[sample_index])
                     if args.include_context:
                         result["input"] = row["input"]
                     predictions.append(result)

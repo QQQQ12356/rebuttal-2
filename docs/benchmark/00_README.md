@@ -17,6 +17,7 @@
 | 07 | [架构与方法保持](07_architecture.md) | 原始算法、加速来源、代码规范与文件职责 |
 | 08 | [Shell 变量索引](08_script_variables.md) | 每个入口可修改的变量、优先级与示例 |
 | 09 | [验证与排错](09_validation.md) | 静态检查记录、Linux CPU/GPU 检查流程 |
+| 10 | [SECO 分组统计](10_group_stats.md) | 逐样本组数、各组 token 数与 JSONL 导出 |
 
 ```text
 configs/benchmark/      数据注册表和训练配置

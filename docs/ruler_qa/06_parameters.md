@@ -67,6 +67,7 @@
 | `50` | `CUDA_VISIBLE_DEVICES`、`NPROC_PER_NODE` | 默认 `0` 和 `1`。测试脚本在单节点按 GPU 分片 |
 | `50` | `RATIOS`、`BATCH_SIZE`、`WORKERS` | 空格分隔的 `4 8 16 32`、单卡 batch `1`、加载进程 `2` |
 | `50` | `WARMUP_BATCHES`、`MAX_NEW_TOKENS`、`PLAN_ONLY` | 每卡每个压缩比预热 `1` 次、最多生成 `32` token、预检开关 `0/1` |
+| `50` | `RECORD_GROUP_STATS` | SECO 默认 `1`，`0` 关闭。见 [分组统计与导出](../benchmark/10_group_stats.md) |
 | `50` | `REPETITION_PENALTY`、`ATTENTION`、`NO_MERGE` | 默认重复惩罚 `1.0`，注意力后端沿用 checkpoint，默认合并 LoRA 后推理。设 `NO_MERGE=1` 保留 LoRA 模块 |
 | `60` | `PREDICTIONS` | 必填，指向某一压缩比的完整 `predictions.jsonl` |
 | `70` | `BENCHMARK_DIR`、`METRIC`、`FIGURE_PATH`、`DPI` | 必填评测目录，默认 `ruler_score`、目录下的 `ruler_qa_heatmap.png`、`300` DPI |

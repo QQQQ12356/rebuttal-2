@@ -33,6 +33,7 @@ export ATTENTION="${ATTENTION:-}"
 export DTYPE="${DTYPE:-}" # Empty uses the checkpoint precision.
 export NO_MERGE="${NO_MERGE:-0}"
 export INCLUDE_CONTEXT="${INCLUDE_CONTEXT:-0}"                    # 1 stores full input for later Excel details.
+export RECORD_GROUP_STATS="${RECORD_GROUP_STATS:-1}"                 # 1 saves context-token counts per SECO group; 0 disables.
 export PLAN_ONLY="${PLAN_ONLY:-0}"
 export RATIOS="${RATIOS:-4 8 16 32}"
 export OUTPUT_DIR="${OUTPUT_DIR:-}" # Empty creates a new timestamped output directory.

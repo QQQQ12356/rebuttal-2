@@ -11,6 +11,7 @@ from ruler_bootstrap import require_linux
 from seco.experiment import artifact_path, check_method, memory_token_bound, validate_ratios
 from seco.data import Collator, length_reason, limit_grid_rows, tokenizer_fingerprint
 from seco.generation import add_generation_arguments, generation_options
+from seco.group_stats import add_group_stats_argument, resolve_group_stats
 from seco.io import fingerprint, iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.progress import BatchProgress
 from seco.ruler_qa.metrics import aggregate, ratio_directory, score_prediction, validate_grid
@@ -39,6 +40,7 @@ def main():
     parser.add_argument("--plan-only", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--shuffle", action="store_true", help="Shuffle candidates using --seed before sample selection")
+    add_group_stats_argument(parser)
     args = parser.parse_args()
     generation = generation_options(parser, args, args.max_new_tokens)
     if args.max_test_samples is not None and args.max_test_samples < 0:
@@ -71,6 +73,7 @@ def main():
         raise ValueError("Unsupported checkpoint format")
     model_config = experiment["config"]["model"]
     check_method(model_config)
+    args.record_group_stats = resolve_group_stats(parser, args.record_group_stats, model_config)
     validate_ratios(model_config, args.ratios)
     if experiment["tokenizer_fingerprint"] != manifest["tokenizer_fingerprint"]:
         raise ValueError("Prepared data and checkpoint tokenizer fingerprints differ")
@@ -170,15 +173,18 @@ def main():
                         model.generate_batch(batch, ratio=ratio, generation=generation)
                 torch.cuda.synchronize(device)
                 start = time.perf_counter()
-                tokens = model.generate_batch(batch, ratio=ratio, generation=generation)
+                group_stats = [] if args.record_group_stats else None
+                tokens = model.generate_batch(batch, ratio=ratio, generation=generation, group_stats=group_stats)
                 torch.cuda.synchronize(device)
                 elapsed = time.perf_counter() - start
                 texts = model.tokenizer.batch_decode(tokens, skip_special_tokens=True)
                 if len(texts) != batch["input_ids"].size(0):
                     raise RuntimeError("Generated batch size differs from input batch")
-                for row, prediction in zip(shard[offset:offset + len(texts)], texts):
+                for sample_index, (row, prediction) in enumerate(zip(shard[offset:offset + len(texts)], texts)):
                     result = {key: row[key] for key in ("id", "task", "source_id", "question", "answer",
                                                         "target_length", "context_tokens", "prompt_tokens")}
+                    if group_stats is not None:
+                        result.update(group_stats[sample_index])
                     yield {**result, "prediction": prediction, "ratio": ratio,
                            "memory_tokens_upper_bound": memory_token_bound(model_config, row["context_tokens"], ratio),
                            "seconds_per_sample": elapsed / len(texts), **score_prediction(prediction, row["answer"])}

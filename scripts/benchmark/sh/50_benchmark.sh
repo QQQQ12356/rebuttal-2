@@ -51,6 +51,12 @@ if [[ -n "$DATASETS" ]]; then
     extra+=(--datasets "${datasets[@]}")
 fi
 [[ "$INCLUDE_CONTEXT" == 1 ]] && extra+=(--include-context)
+case "${RECORD_GROUP_STATS:-}" in
+    '') ;; # Use the checkpoint method's default.
+    0) extra+=(--no-record-group-stats) ;;
+    1) extra+=(--record-group-stats) ;;
+    *) echo 'RECORD_GROUP_STATS must be 0 or 1.' >&2; exit 2 ;;
+esac
 [[ "$SHUFFLE" == 1 ]] && extra+=(--shuffle)
 [[ -n "$MODEL_PATH" ]] && extra+=(--model "$MODEL_PATH")
 [[ -n "$ATTENTION" ]] && extra+=(--attention "$ATTENTION")

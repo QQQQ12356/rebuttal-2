@@ -106,6 +106,8 @@
 | 同上 | QA_MAX_NEW_TOKENS / NEWS_MAX_NEW_TOKENS | 64 / 512，均不得超过预处理生成预算 |
 | 同上 | REPETITION_PENALTY / SEED | 1.0 / 42 |
 | 同上 | INCLUDE_CONTEXT | 0；1 保存完整正文供 Excel 导出 |
+| 同上 | RECORD_GROUP_STATS | SECO 默认 1；0 关闭逐样本分组统计 |
+| 55_export_group_stats.sh | BENCHMARK_DIR / GROUP_STATS_OUTPUT | 已完成的评测目录 / 新 JSONL 路径，默认写入评测目录。见 [分组统计](10_group_stats.md) |
 | 60_score.sh | PREDICTIONS | 必改为真实 predictions.jsonl 路径 |
 | 70_export_excel.sh | INPUTS | 指标文件/glob 数组，保持引号 |
 | 同上 | EXCEL_PATH | 自动唯一 xlsx 路径 |

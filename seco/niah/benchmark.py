@@ -9,6 +9,7 @@ import time
 from seco.data import Collator, limit_grid_rows, tokenizer_fingerprint
 from seco.experiment import artifact_path, check_method, memory_token_bound, validate_ratios
 from seco.generation import add_generation_arguments, generation_options
+from seco.group_stats import add_group_stats_argument, resolve_group_stats
 from seco.io import fingerprint, iter_jsonl, project_path, read_json, sha256_file, write_json, write_jsonl
 from seco.niah.metrics import aggregate, aggregate_training, score_prediction
 from seco.niah.train_eval import load_training_rows
@@ -37,6 +38,7 @@ def main(*, train_only=False):
     parser.add_argument("--no-merge", action="store_true")
     parser.add_argument("--plan-only", action="store_true", help="Verify inputs and report workload without importing torch")
     parser.add_argument("--seed", type=int, help="Generation seed override (defaults to the dataset seed)")
+    add_group_stats_argument(parser)
     args = parser.parse_args()
     generation = generation_options(parser, args, args.max_new_tokens)
     if train_only and not args.eval_train:
@@ -58,6 +60,7 @@ def main(*, train_only=False):
         raise ValueError("Unsupported checkpoint format")
     model_config = experiment["config"]["model"]
     check_method(model_config)
+    args.record_group_stats = resolve_group_stats(parser, args.record_group_stats, model_config)
     validate_ratios(model_config, args.ratios)
     checkpoint_file = source / ("artifact.json" if (source / "artifact.json").exists() else "model.safetensors")
     split = "train" if args.eval_train else "test"
@@ -174,18 +177,21 @@ def main(*, train_only=False):
                         model.generate_batch(batch, ratio=ratio, generation=generation)
                 torch.cuda.synchronize(device)
                 started = time.perf_counter()
-                tokens = model.generate_batch(batch, ratio=ratio, generation=generation)
+                group_stats = [] if args.record_group_stats else None
+                tokens = model.generate_batch(batch, ratio=ratio, generation=generation, group_stats=group_stats)
                 torch.cuda.synchronize(device)
                 elapsed = time.perf_counter() - started
                 predictions = model.tokenizer.batch_decode(tokens, skip_special_tokens=True)
                 if len(predictions) != batch["input_ids"].size(0):
                     raise RuntimeError("NIAH generation batch size mismatch")
-                for row, prediction in zip(shard[offset:offset + len(predictions)], predictions):
+                for sample_index, (row, prediction) in enumerate(zip(shard[offset:offset + len(predictions)], predictions)):
                     result = prediction_metadata(row, args.eval_train)
                     result.update({"prediction": prediction, "ratio": ratio, "status": "ok",
                                    "memory_tokens_upper_bound": memory_token_bound(model_config, row["context_tokens"], ratio),
                                    "seconds_per_sample": elapsed / len(predictions),
                                    **score_prediction(prediction, row["answer"])})
+                    if group_stats is not None:
+                        result.update(group_stats[sample_index])
                     handle.write(json.dumps(result, ensure_ascii=False) + "\n")
                 handle.flush()
                 offset += len(predictions)

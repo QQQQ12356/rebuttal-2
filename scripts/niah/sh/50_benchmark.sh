@@ -61,6 +61,12 @@ options=(--checkpoint "$CHECKPOINT" "${dataset_options[@]}" --output "$OUTPUT_DI
          --warmup-batches "$WARMUP_BATCHES" --max-new-tokens "$MAX_NEW_TOKENS"
          "${generation_options[@]}")
 [[ -n "$MAX_TEST_SAMPLES" ]] && options+=(--max-test-samples "$MAX_TEST_SAMPLES")
+case "${RECORD_GROUP_STATS:-}" in
+    '') ;; # Use the checkpoint method's default.
+    0) options+=(--no-record-group-stats) ;;
+    1) options+=(--record-group-stats) ;;
+    *) echo 'RECORD_GROUP_STATS must be 0 or 1.' >&2; exit 2 ;;
+esac
 [[ "$SHUFFLE" == 1 ]] && options+=(--shuffle)
 [[ -n "$MODEL_PATH" ]] && options+=(--model "$MODEL_PATH")
 [[ -n "$ATTENTION" ]] && options+=(--attention "$ATTENTION")

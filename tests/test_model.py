@@ -117,7 +117,14 @@ class ModelTests(unittest.TestCase):
             valid = torch.arange(19)[None, :] < torch.tensor([19, 11, 5])[:, None]
             prompt = valid & (torch.arange(19)[None, :] >= torch.tensor([15, 9, 0])[:, None])
             original, expected_mask = Reference(ratio)._compress_batch(inputs, prompt, valid)
-            candidate, actual_mask = Compressor(ratio, 2)._compress_batch(inputs, prompt, valid)
+            group_stats = []
+            candidate, actual_mask = Compressor(ratio, 2)._compress_batch(inputs, prompt, valid, group_stats=group_stats)
+            self.assertEqual([sum(row["group_token_counts"]) for row in group_stats], [15, 9, 0])
+            expected_counts = [max(2, (length + ratio - 1) // ratio) for length in (15, 9)] + [0]
+            self.assertEqual([row["group_count"] for row in group_stats], expected_counts)
+            for row in group_stats:
+                self.assertEqual(row["group_count"], len(row["group_token_counts"]))
+                self.assertTrue(all(size >= 1 for size in row["group_token_counts"]))
             torch.testing.assert_close(candidate, original, rtol=1e-5, atol=1e-6)
             self.assertTrue(torch.equal(actual_mask, expected_mask))
             expected_grad = torch.autograd.grad(original.square().sum(), inputs, retain_graph=True)[0]

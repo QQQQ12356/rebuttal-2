@@ -162,12 +162,14 @@ class CompressionModel(torch.nn.Module):
         return output.loss
 
     @torch.inference_mode()
-    def generate_batch(self, batch: dict, *, ratio: float, generation: dict):
+    def generate_batch(self, batch: dict, *, ratio: float, generation: dict, group_stats: list | None = None):
+        """Generate tokens and optionally append one SECO grouping record per input."""
         if not math.isfinite(ratio) or ratio < 1:
             raise ValueError("Inference compression ratio must be finite and >= 1")
         validate_ratios(self.model_config, [ratio])
         self.compress_ratio = ratio
-        compressed, mask = self._encode_compress(**batch)
+        compression_options = {} if group_stats is None else {"group_stats": group_stats}
+        compressed, mask = self._encode_compress(**batch, **compression_options)
         if compressed.size(1) + generation.get("max_new_tokens", 0) > self.config.max_position_embeddings:
             raise ValueError("Compressed prefix and generation exceed the decoder position limit")
         compressed, mask = self._left_pad(compressed, mask)
@@ -193,9 +195,9 @@ class SECO(CompressionMixin, CompressionModel):
         super().__init__(model_config, **kwargs)
         self.cos = ChunkedCosine(model_config.get("similarity_chunk_tokens", 16))
 
-    def _encode_compress(self, input_ids, prompt_mask, attention_mask):
+    def _encode_compress(self, input_ids, prompt_mask, attention_mask, *, group_stats=None):
         hidden = self.hidden(self.encoder, input_ids=input_ids, attention_mask=attention_mask)
-        compressed, mask = self._compress_batch(hidden, prompt_mask, attention_mask)
+        compressed, mask = self._compress_batch(hidden, prompt_mask, attention_mask, group_stats=group_stats)
         return compressed.to(self.decoder.get_input_embeddings().weight.dtype), mask
 
 
